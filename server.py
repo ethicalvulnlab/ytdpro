@@ -31,6 +31,7 @@ from flask import Flask, Response, jsonify, render_template, request
 log = logging.getLogger("ytdpro")
 
 app = Flask(__name__)
+app.config["TEMPLATES_AUTO_RELOAD"] = True  # UI edits show up on refresh
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 SETTINGS_FILE = Path(os.environ.get("YT_SETTINGS_FILE",

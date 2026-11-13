@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark light">
+<title>ytdpro — local media vault</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────────────────────
+   ytdpro — "archive studio" theme
+   warm ink + paper, vermilion accent, serif display, mono metadata
+   ───────────────────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#0a0908; --bg-deep:#070606;
+  --surface:#121010; --surface-2:#171413; --surface-3:#1e1a18;
+  --sunk:#0d0b0a;
+  --line:rgba(242,232,214,.09); --line-2:rgba(242,232,214,.17); --line-3:rgba(242,232,214,.28);
+  --ink:#f3ecdf; --ink-2:#a79d8e; --ink-3:#6f665a;
+  --accent:#f2543c; --accent-2:#ff7d61; --accent-soft:rgba(242,84,60,.13);
+  --green:#8bbf74; --green-soft:rgba(139,191,116,.12);
+  --amber:#e3a53f; --amber-soft:rgba(227,165,63,.12);
+  --blue:#7aa7d9; --blue-soft:rgba(122,167,217,.12);
+  --shadow:0 18px 50px -18px rgba(0,0,0,.65);
+  --font-display:'Fraunces',Georgia,'Times New Roman',serif;
+  --font-body:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+  --r:16px; --r-md:12px; --r-sm:8px;
+  --rail:238px;
+}
+html[data-theme="light"]{
+  --bg:#f0eade; --bg-deep:#e7e0d2;
+  --surface:#faf6ec; --surface-2:#f6f1e5; --surface-3:#ece5d6;
+  --sunk:#e9e2d4;
+  --line:rgba(38,30,22,.11); --line-2:rgba(38,30,22,.2); --line-3:rgba(38,30,22,.34);
+  --ink:#221c15; --ink-2:#655b4d; --ink-3:#94897a;
+  --accent:#cf3d25; --accent-2:#b3311c; --accent-soft:rgba(207,61,37,.1);
+  --green:#4f7d3b; --green-soft:rgba(79,125,59,.1);
+  --amber:#a9761c; --amber-soft:rgba(169,118,28,.12);
+  --blue:#3f6f9e; --blue-soft:rgba(63,111,158,.1);
+  --shadow:0 20px 45px -22px rgba(64,44,22,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--font-body);
+  font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(58% 42% at 12% -6%, rgba(242,84,60,.10), transparent 70%),
+    radial-gradient(46% 40% at 92% 6%, rgba(227,165,63,.06), transparent 70%),
+    radial-gradient(70% 55% at 50% 110%, rgba(139,191,116,.05), transparent 70%);
+}
+html[data-theme="light"] body::before{
+  background:
+    radial-gradient(55% 40% at 10% -8%, rgba(207,61,37,.08), transparent 70%),
+    radial-gradient(50% 42% at 94% 4%, rgba(169,118,28,.08), transparent 70%);
+}
+.grain{
+  position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.035; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/></svg>");
+}
+button,input,select,textarea{font:inherit;color:inherit;}
+button{cursor:pointer;background:none;border:none;}
+button:disabled{cursor:not-allowed;}
+a{color:inherit;text-decoration:none;}
+::selection{background:var(--accent);color:#fff;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+.ic.sm{width:14px;height:14px;}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+
+/* ── layout ─────────────────────────────────────────────────────────────── */
+.app{position:relative;z-index:2;display:flex;height:100vh;height:100dvh;overflow:hidden;}
+.rail{
+  width:var(--rail);flex:none;display:flex;flex-direction:column;
+  background:linear-gradient(180deg, var(--surface) 0%, var(--bg-deep) 100%);
+  border-inline-end:1px solid var(--line);padding:20px 14px 14px;overflow:hidden;
+}
+.brand{display:flex;align-items:center;gap:11px;padding:2px 6px 22px;}
+.mark{
+  width:34px;height:34px;border-radius:10px;flex:none;position:relative;
+  background:linear-gradient(145deg,var(--accent),#b92e1b);
+  display:grid;place-items:center;color:#fff;box-shadow:0 8px 20px -8px rgba(242,84,60,.9);
+}
+.mark svg{width:15px;height:15px;fill:#fff;stroke:none;margin-inline-start:1px;}
+.brand-txt{min-width:0;}
+.brand-name{font-family:var(--font-display);font-size:23px;font-weight:600;letter-spacing:-.6px;line-height:1.05;}
+.brand-sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--ink-3);margin-top:5px;white-space:nowrap;}
+.nav{display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;}
+.nav-label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);padding:20px 10px 8px;}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:10px;
+  color:var(--ink-2);font-size:13.5px;font-weight:500;text-align:start;width:100%;
+  transition:background .16s,color .16s,transform .16s;position:relative;
+}
+.nav-item .ic{opacity:.65;transition:opacity .16s;}
+.nav-item:hover{background:var(--surface-3);color:var(--ink);}
+.nav-item:hover .ic{opacity:.9;}
+.nav-item.active{background:var(--accent-soft);color:var(--ink);}
+.nav-item.active .ic{opacity:1;color:var(--accent);}
+.nav-item.active::before{content:"";position:absolute;inset-inline-start:-14px;top:50%;transform:translateY(-50%);width:3px;height:18px;border-radius:0 3px 3px 0;background:var(--accent);}
+.rail-jobs{flex:1;overflow-y:auto;margin-top:6px;scrollbar-width:thin;}
+.rail-job{display:block;width:100%;text-align:start;padding:8px 10px;border-radius:9px;transition:background .15s;}
+.rail-job:hover{background:var(--surface-3);}
+.rail-job .rj-title{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:7px;}
+.rail-job .rj-meta{font-family:var(--font-mono);font-size:9px;color:var(--ink-3);margin-top:3px;padding-inline-start:11px;text-transform:uppercase;letter-spacing:.6px;}
+.dot{width:6px;height:6px;border-radius:50%;flex:none;background:var(--ink-3);}
+.dot.live{background:var(--blue);box-shadow:0 0 0 0 rgba(122,167,217,.6);animation:ping 1.6s ease-out infinite;}
+.dot.done{background:var(--green);}
+.dot.error{background:var(--accent);}
+.dot.ready{background:var(--amber);}
+.dot.cancelled{background:var(--ink-3);}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(122,167,217,.5)}70%{box-shadow:0 0 0 6px rgba(122,167,217,0)}100%{box-shadow:0 0 0 0 rgba(122,167,217,0)}}
+.rail-foot{border-top:1px solid var(--line);padding-top:12px;margin-top:auto;display:flex;flex-direction:column;gap:8px;}
+.rail-meta{display:flex;align-items:center;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--ink-3);letter-spacing:.4px;padding:0 4px;}
+.rail-links{display:flex;align-items:center;gap:6px;}
+.icon-btn{
+  width:34px;height:34px;display:grid;place-items:center;border-radius:9px;
+  color:var(--ink-2);border:1px solid transparent;transition:.15s;
+}
+.icon-btn:hover{background:var(--surface-3);color:var(--ink);border-color:var(--line);}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.topbar{
+  height:76px;flex:none;display:flex;align-items:center;gap:16px;
+  padding:0 32px;border-bottom:1px solid var(--line);
+  background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:blur(12px);
+}
+.title-wrap{min-width:0;flex:1;}
+.kicker{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:7px;}
+.kicker::before{content:"";width:16px;height:1px;background:var(--accent);}
+.topbar h1{font-family:var(--font-display);font-size:26px;font-weight:500;letter-spacing:-.7px;line-height:1.1;margin-top:3px;}
+.top-actions{display:flex;align-items:center;gap:8px;}
+.top-theme{display:none;border:1px solid var(--line);background:var(--surface);}
+.pill{
+  display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;
+  border:1px solid var(--line);background:var(--surface);font-family:var(--font-mono);
+  font-size:10px;color:var(--ink-2);letter-spacing:.3px;white-space:nowrap;
+}
+.pill .dot{width:5px;height:5px;}
+.pill.alert{color:var(--amber);border-color:var(--amber-soft);background:var(--amber-soft);}
+.pill.accent{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft);}
+.scroll{flex:1;overflow-y:auto;scroll-behavior:smooth;}
+.scroll::-webkit-scrollbar{width:10px;}
+.scroll::-webkit-scrollbar-thumb{background:var(--surface-3);border:3px solid var(--bg);border-radius:99px;}
+.wrap{max-width:1180px;margin:0 auto;padding:30px 32px 90px;}
+
+/* ── generic ─────────────────────────────────────────────────────────────── */
+.view{display:none;}
+.view.active{display:block;animation:view-in .45s cubic-bezier(.22,1,.36,1) both;}
+@keyframes view-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.card{background:linear-gradient(160deg,var(--surface-2),var(--surface));border:1px solid var(--line);border-radius:var(--r);}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 18px;
+  border-radius:10px;font-size:13px;font-weight:600;border:1px solid transparent;
+  transition:transform .15s,background .15s,border-color .15s,color .15s,box-shadow .15s;white-space:nowrap;
+}
+.btn:active{transform:translateY(1px) scale(.995);}
+.btn .ic{width:16px;height:16px;}
+.btn-accent{background:var(--accent);color:#fff;box-shadow:0 10px 26px -12px rgba(242,84,60,.85);}
+.btn-accent:hover{background:var(--accent-2);}
+.btn-accent:disabled{background:var(--surface-3);color:var(--ink-3);box-shadow:none;}
+.btn-ghost{border-color:var(--line-2);color:var(--ink-2);background:transparent;}
+.btn-ghost:hover{color:var(--ink);border-color:var(--line-3);background:var(--surface-3);}
+.btn-quiet{color:var(--ink-2);background:var(--surface-3);border-color:transparent;}
+.btn-quiet:hover{color:var(--ink);background:var(--surface-3);border-color:var(--line);}
+.btn-danger{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft);}
+.btn-danger:hover{background:rgba(242,84,60,.2);}
+.btn-sm{height:32px;padding:0 12px;font-size:11.5px;border-radius:8px;}
+.btn-xs{height:28px;padding:0 9px;font-size:10.5px;border-radius:7px;}
+.link{color:var(--accent);font-weight:600;}
+.mono{font-family:var(--font-mono);}
+.muted{color:var(--ink-2);}
+.faint{color:var(--ink-3);}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:34px 0 14px;}
+.section-head h2{font-family:var(--font-display);font-size:22px;font-weight:500;letter-spacing:-.4px;}
+.section-head p{font-size:12.5px;color:var(--ink-3);margin-top:3px;}
+
+/* ── hero ───────────────────────────────────────────────────────────────── */
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;padding:10px 2px 26px;}
+.eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:2.4px;text-transform:uppercase;color:var(--ink-3);}
+.hero h2{font-family:var(--font-display);font-size:clamp(34px,4.4vw,52px);line-height:1.02;font-weight:450;letter-spacing:-2px;margin:12px 0 12px;}
+.hero h2 em{font-style:italic;font-weight:400;color:var(--accent);}
+.hero p{max-width:520px;color:var(--ink-2);font-size:13.5px;}
+.hero-mark{flex:none;display:flex;align-items:center;gap:22px;padding-bottom:4px;}
+.hero-ring{position:relative;width:74px;height:74px;display:grid;place-items:center;}
+.hero-ring svg{position:absolute;inset:0;transform:rotate(-90deg);}
+.hero-ring circle{fill:none;stroke:var(--line);stroke-width:1;}
+.hero-ring .arc{stroke:var(--accent);stroke-width:1.6;stroke-linecap:round;stroke-dasharray:132 999;}
+.hero-num{font-family:var(--font-display);font-size:23px;font-weight:500;}
+.hero-cap{font-family:var(--font-mono);font-size:8.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3);margin-top:2px;}
+
+/* ── composer ───────────────────────────────────────────────────────────── */
+.composer{padding:22px;box-shadow:var(--shadow);}
+.segmented{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px;margin-bottom:18px;}
+.seg{padding:7px 15px;border-radius:8px;font-size:12px;font-weight:600;color:var(--ink-2);transition:.15s;display:flex;align-items:center;gap:7px;}
+.seg .ic{width:14px;height:14px;opacity:.7;}
+.seg:hover{color:var(--ink);}
+.seg.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 rgba(255,255,255,.04),0 4px 12px rgba(0,0,0,.25);}
+.seg.active .ic{color:var(--accent);opacity:1;}
+.url-shell{display:flex;align-items:center;gap:10px;background:var(--sunk);border:1px solid var(--line-2);border-radius:13px;padding:5px 6px 5px 14px;transition:border-color .18s,box-shadow .18s;}
+.url-shell:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.url-shell .ic{color:var(--ink-3);}
+#url-input{flex:1;min-width:0;height:42px;background:none;border:none;outline:none;font-size:14.5px;letter-spacing:-.1px;}
+#url-input::placeholder{color:var(--ink-3);}
+.url-actions{display:flex;align-items:center;gap:5px;flex:none;}
+.mini-btn{height:34px;padding:0 11px;border-radius:8px;font-size:11px;font-weight:600;color:var(--ink-2);border:1px solid transparent;display:inline-flex;align-items:center;gap:6px;transition:.15s;}
+.mini-btn:hover{color:var(--ink);background:var(--surface-3);border-color:var(--line);}
+.mini-btn .ic{width:14px;height:14px;}
+.preview{display:none;gap:13px;align-items:center;margin-top:12px;padding:11px;background:var(--surface);border:1px solid var(--line);border-radius:11px;animation:view-in .3s both;}
+.preview.show{display:flex;}
+.pv-thumb{width:92px;height:52px;border-radius:7px;object-fit:cover;background:var(--surface-3);flex:none;}
+.pv-ph{width:92px;height:52px;border-radius:7px;background:var(--surface-3);display:grid;place-items:center;color:var(--ink-3);flex:none;}
+.pv-body{min-width:0;flex:1;}
+.pv-title{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pv-meta{font-family:var(--font-mono);font-size:10px;color:var(--ink-3);margin-top:4px;display:flex;gap:9px;flex-wrap:wrap;}
+.pv-meta span{display:flex;align-items:center;gap:4px;}
+.opts{display:flex;align-items:flex-end;gap:20px;margin-top:18px;flex-wrap:wrap;}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0;}
+.field > label{font-family:var(--font-mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3);}
+.qchips{display:flex;gap:5px;flex-wrap:wrap;}
+.qchip{padding:7px 12px;border-radius:8px;border:1px solid var(--line);font-size:11.5px;font-weight:600;color:var(--ink-2);transition:.15s;font-family:var(--font-mono);letter-spacing:.2px;}
+.qchip:hover{border-color:var(--line-2);color:var(--ink);}
+.qchip.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.channel-opts{display:none;gap:14px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px dashed var(--line);}
+.channel-opts.show{display:flex;animation:view-in .3s both;}
+.inp{height:38px;padding:0 11px;border-radius:9px;border:1px solid var(--line-2);background:var(--sunk);color:var(--ink);font-size:12.5px;outline:none;transition:.15s;}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.composer-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);}
+.hint{font-size:11px;color:var(--ink-3);display:flex;align-items:center;gap:7px;}
+.key{font-family:var(--font-mono);font-size:9px;padding:2px 5px;border:1px solid var(--line-2);border-radius:4px;color:var(--ink-2);}
+#start-btn{min-width:164px;}
+
+/* ── job panels ─────────────────────────────────────────────────────────── */
+#jobs-area{margin-top:34px;display:flex;flex-direction:column;gap:16px;}
+.job{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;animation:rise .4s cubic-bezier(.22,1,.36,1) both;}
+.job.is-done{border-color:var(--green-soft);}
+.job.is-error{border-color:var(--accent-soft);}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.job-head{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);}
+.job-head .jtitle{font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.job-head .jtime{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-3);flex:none;}
+.badge{display:inline-flex;align-items:center;gap:6px;height:23px;padding:0 8px;border-radius:5px;font-family:var(--font-mono);font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.9px;background:var(--surface-3);color:var(--ink-2);flex:none;}
+.badge b{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.badge.scanning,.badge.running{background:var(--blue-soft);color:var(--blue);}
+.badge.ready{background:var(--amber-soft);color:var(--amber);}
+.badge.done{background:var(--green-soft);color:var(--green);}
+.badge.error{background:var(--accent-soft);color:var(--accent);}
+.badge.cancelled{background:var(--surface-3);color:var(--ink-3);}
+.job-body{padding:17px 18px;}
+.scanline{display:flex;align-items:center;gap:12px;padding:6px 0;}
+.spinner{width:16px;height:16px;border-radius:50%;border:1.6px solid var(--line-2);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scanline .txt{font-size:12.5px;color:var(--ink-2);}
+.scanline .count{margin-inline-start:auto;font-family:var(--font-display);font-size:26px;font-weight:500;color:var(--ink);}
+.ready-banner{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:13px 14px;border:1px solid var(--amber-soft);background:var(--amber-soft);border-radius:10px;margin-bottom:14px;}
+.ready-txt{flex:1;min-width:180px;}
+.ready-txt strong{display:block;font-size:13px;color:var(--amber);}
+.ready-txt span{font-size:11.5px;color:var(--ink-2);}
+.overall{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.bar{flex:1;height:3px;background:var(--surface-3);border-radius:99px;overflow:hidden;}
+.bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:99px;transition:width .4s cubic-bezier(.22,1,.36,1);}
+.ov-stats{display:flex;gap:12px;font-family:var(--font-mono);font-size:9.5px;color:var(--ink-3);flex:none;letter-spacing:.3px;}
+.ov-stats b{color:var(--ink-2);font-weight:500;}
+.slots{display:flex;align-items:center;gap:4px;margin-bottom:14px;}
+.pip{width:14px;height:4px;border-radius:99px;background:var(--surface-3);transition:.25s;}
+.pip.on{background:var(--blue);box-shadow:0 0 8px rgba(122,167,217,.5);}
+.slots .lbl{font-family:var(--font-mono);font-size:9px;color:var(--ink-3);margin-inline-start:6px;}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:11px;}
+.vgrid.solo{grid-template-columns:minmax(0,300px);}
+.vcard{position:relative;border-radius:10px;overflow:hidden;background:var(--surface-3);border:1px solid var(--line);transition:border-color .2s,transform .2s;}
+.vcard:hover{transform:translateY(-2px);border-color:var(--line-2);}
+.vcard.dl{border-color:rgba(122,167,217,.45);}
+.vcard.done{border-color:rgba(139,191,116,.32);}
+.vcard.err{border-color:rgba(242,84,60,.4);}
+.thumb{position:relative;aspect-ratio:16/9;background:var(--sunk);overflow:hidden;}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.thumb .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-3);font-family:var(--font-mono);font-size:11px;}
+.thumb .shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.62));opacity:0;transition:.2s;}
+.vcard:hover .shade{opacity:1;}
+.vprog{position:absolute;inset-inline:0;bottom:0;height:3px;background:rgba(255,255,255,.18);}
+.vprog i{display:block;height:100%;width:0;background:var(--blue);transition:width .3s;}
+.vprog i.proc{background:var(--amber);}
+.vprog i.ok{background:var(--green);}
+.vprog i.bad{background:var(--accent);}
+.vstate{position:absolute;top:6px;inset-inline-start:6px;font-family:var(--font-mono);font-size:8px;letter-spacing:.6px;text-transform:uppercase;padding:3px 6px;border-radius:4px;background:rgba(8,7,6,.72);color:#e9e0d2;backdrop-filter:blur(4px);}
+.vstate.downloading{background:rgba(58,110,170,.9);}
+.vstate.processing{background:rgba(170,120,30,.9);}
+.vstate.done{background:rgba(70,110,55,.9);}
+.vstate.error{background:rgba(190,50,32,.9);}
+.vspeed{position:absolute;top:6px;inset-inline-end:6px;font-family:var(--font-mono);font-size:8.5px;padding:3px 6px;border-radius:4px;background:rgba(8,7,6,.72);color:#f0e8da;display:none;}
+.vspeed.show{display:block;}
+.vactions{position:absolute;inset-inline-end:5px;bottom:6px;display:none;gap:4px;}
+.vcard:hover .vactions{display:flex;}
+.vact{width:24px;height:24px;border-radius:6px;background:rgba(8,7,6,.78);color:#f0e8da;display:grid;place-items:center;backdrop-filter:blur(4px);transition:.15s;}
+.vact:hover{background:var(--accent);}
+.vact .ic{width:12px;height:12px;}
+.vlabel{padding:8px 9px 9px;}
+.vname{font-size:11.5px;line-height:1.35;font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:31px;}
+.vmeta{display:flex;justify-content:space-between;gap:6px;margin-top:4px;font-family:var(--font-mono);font-size:9px;color:var(--ink-3);}
+.verr{color:var(--accent);font-size:9.5px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.job-foot{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line);}
+.logbtn{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--ink-3);display:inline-flex;align-items:center;gap:6px;transition:.15s;}
+.logbtn:hover{color:var(--ink-2);}
+.logbtn .ic{width:12px;height:12px;transition:transform .2s;}
+.logbtn.open .ic{transform:rotate(90deg);}
+.logbox{display:none;margin-top:10px;background:var(--sunk);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.9;color:var(--ink-2);max-height:190px;overflow-y:auto;}
+.logbox.open{display:block;}
+.logline{white-space:pre-wrap;word-break:break-word;}
+
+.recent{display:none;margin-top:36px;}
+.recent.show{display:block;}
+.recent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;}
+.rcard{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--surface-2);transition:.18s;text-align:start;}
+.rcard:hover{border-color:var(--line-2);transform:translateY(-2px);}
+.rimg{aspect-ratio:16/9;background:var(--sunk);overflow:hidden;position:relative;}
+.rimg img{width:100%;height:100%;object-fit:cover;display:block;}
+.rimg .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-3);}
+.rbody{padding:9px 11px 11px;}
+.rtitle{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rmeta{font-family:var(--font-mono);font-size:9px;color:var(--ink-3);margin-top:4px;text-transform:uppercase;letter-spacing:.5px;}
+@media(max-width:760px){.recent-grid{grid-template-columns:1fr;}}
+
+/* ── history ────────────────────────────────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.stat{padding:15px 17px;border:1px solid var(--line);border-radius:13px;background:linear-gradient(165deg,var(--surface-2),var(--surface));position:relative;overflow:hidden;}
+.stat::after{content:"";position:absolute;inset-block-start:0;inset-inline-start:0;width:34px;height:2px;background:var(--accent);opacity:.7;}
+.stat:nth-child(2)::after{background:var(--green);}
+.stat:nth-child(3)::after{background:var(--amber);}
+.stat:nth-child(4)::after{background:var(--blue);}
+.stat-k{font-family:var(--font-mono);font-size:8.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--ink-3);}
+.stat-v{font-family:var(--font-display);font-size:28px;font-weight:500;letter-spacing:-.8px;margin-top:4px;line-height:1;}
+.stat-s{font-size:10.5px;color:var(--ink-3);margin-top:5px;}
+.activity{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:8px;}
+.activity i{flex:1;background:var(--line-2);border-radius:2px 2px 0 0;min-height:2px;transition:.3s;}
+.activity i.hot{background:var(--accent);}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.search{display:flex;align-items:center;gap:9px;height:40px;padding:0 13px;border-radius:10px;border:1px solid var(--line-2);background:var(--sunk);flex:1;min-width:200px;max-width:420px;transition:.15s;}
+.search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.search .ic{color:var(--ink-3);width:15px;height:15px;}
+.search input{flex:1;background:none;border:none;outline:none;font-size:12.5px;}
+.search input::placeholder{color:var(--ink-3);}
+.filters{display:flex;gap:4px;background:var(--sunk);border:1px solid var(--line);border-radius:9px;padding:3px;}
+.filt{padding:6px 11px;border-radius:6px;font-size:11px;font-weight:600;color:var(--ink-3);transition:.15s;}
+.filt:hover{color:var(--ink-2);}
+.filt.active{background:var(--surface);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.25);}
+.hist-list{display:flex;flex-direction:column;gap:10px;}
+.hist{display:grid;grid-template-columns:132px minmax(0,1fr) auto;gap:16px;align-items:center;padding:13px;border:1px solid var(--line);border-radius:13px;background:var(--surface-2);transition:border-color .18s,transform .18s;animation:rise .35s both;animation-delay:calc(var(--i,0) * 25ms);}
+.hist:hover{border-color:var(--line-2);}
+.hist-thumb{width:132px;height:74px;border-radius:8px;overflow:hidden;background:var(--sunk);position:relative;flex:none;}
+.hist-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.hist-thumb .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-3);}
+.hist-thumb .stamp{position:absolute;inset-inline-start:6px;bottom:6px;font-family:var(--font-mono);font-size:8px;letter-spacing:.5px;text-transform:uppercase;padding:2px 5px;border-radius:3px;background:rgba(8,7,6,.75);color:#efe6d6;backdrop-filter:blur(3px);}
+.hist-main{min-width:0;}
+.hist-title{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-title .missing{color:var(--ink-3);font-weight:400;font-style:italic;}
+.hist-meta{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px;font-family:var(--font-mono);font-size:9.5px;color:var(--ink-3);letter-spacing:.2px;}
+.hist-meta span{display:inline-flex;align-items:center;gap:4px;}
+.hist-meta .ic{width:11px;height:11px;}
+.hist-url{margin-top:6px;font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:520px;}
+.hist-counts{display:flex;gap:9px;margin-top:6px;font-family:var(--font-mono);font-size:9px;}
+.hist-counts .ok{color:var(--green);}
+.hist-counts .bad{color:var(--accent);}
+.hist-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:340px;}
+.hist-actions .btn{height:30px;padding:0 10px;font-size:10.5px;border-radius:7px;}
+.hist-actions .btn .ic{width:13px;height:13px;}
+.hist-detail{grid-column:1/-1;border-top:1px dashed var(--line);margin-top:2px;padding-top:12px;display:none;}
+.hist-detail.open{display:block;animation:view-in .25s both;}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:7px;}
+.drow{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--line);min-width:0;}
+.dthumb{width:52px;height:30px;border-radius:5px;object-fit:cover;background:var(--surface-3);flex:none;}
+.dinfo{min-width:0;flex:1;}
+.dtitle{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dmeta{font-family:var(--font-mono);font-size:8.5px;color:var(--ink-3);margin-top:2px;text-transform:uppercase;letter-spacing:.4px;}
+.dopen{width:24px;height:24px;border-radius:5px;display:grid;place-items:center;color:var(--ink-3);}
+.dopen:hover{background:var(--surface-3);color:var(--ink);}
+.dopen .ic{width:12px;height:12px;}
+.dopen:disabled{opacity:.25;}
+
+/* ── settings ───────────────────────────────────────────────────────────── */
+.set-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.panel{border:1px solid var(--line);border-radius:14px;background:var(--surface-2);overflow:hidden;}
+.panel-head{padding:15px 18px 0;display:flex;align-items:center;gap:9px;}
+.panel-head .ic{width:15px;height:15px;color:var(--accent);}
+.panel-head h3{font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-2);font-weight:500;}
+.panel-body{padding:14px 18px 18px;display:flex;flex-direction:column;gap:16px;}
+.setting{display:flex;align-items:center;justify-content:space-between;gap:18px;}
+.setting .s-txt{min-width:0;}
+.setting .s-name{font-size:12.5px;font-weight:500;}
+.setting .s-desc{font-size:10.5px;color:var(--ink-3);margin-top:2px;line-height:1.45;}
+.setting > .inp,.setting > select{width:150px;flex:none;}
+.setting.stack{flex-direction:column;align-items:stretch;gap:7px;}
+.setting.stack .inp{width:100%;}
+select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' fill='none' stroke='%23888' stroke-width='1.6'><path d='M2 4l3.5 3.5L9 4'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-inline-end:28px;}
+html[dir="rtl"] select.inp{background-position:left 10px center;}
+.switch{position:relative;width:38px;height:22px;border-radius:99px;background:var(--surface-3);border:1px solid var(--line-2);flex:none;transition:.2s;}
+.switch::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:14px;height:14px;border-radius:50%;background:var(--ink-3);transition:.2s;}
+.switch.on{background:var(--accent);border-color:var(--accent);}
+.switch.on::after{background:#fff;transform:translateX(16px);}
+html[dir="rtl"] .switch.on::after{transform:translateX(-16px);}
+.range-row{display:flex;align-items:center;gap:11px;flex:none;width:170px;}
+input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
+.range-val{font-family:var(--font-mono);font-size:12px;color:var(--ink);min-width:20px;text-align:center;}
+.big-input{display:flex;gap:8px;}
+.big-input .inp{flex:1;font-family:var(--font-mono);font-size:11.5px;}
+.save-row{display:flex;align-items:center;gap:12px;position:sticky;bottom:0;padding:16px 0 0;margin-top:20px;background:linear-gradient(transparent,var(--bg) 30%);}
+.save-note{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-3);display:flex;align-items:center;gap:6px;opacity:0;transition:.2s;}
+.save-note.show{opacity:1;color:var(--green);}
+
+/* ── empty / toast / modal ──────────────────────────────────────────────── */
+.empty{padding:64px 20px;text-align:center;border:1px dashed var(--line-2);border-radius:14px;background:linear-gradient(180deg,transparent,var(--surface));}
+.empty .eicon{width:52px;height:52px;border-radius:14px;margin:0 auto 14px;display:grid;place-items:center;background:var(--surface-3);color:var(--ink-3);}
+.empty .eicon .ic{width:22px;height:22px;}
+.empty h3{font-family:var(--font-display);font-size:19px;font-weight:500;letter-spacing:-.3px;}
+.empty p{font-size:12px;color:var(--ink-3);margin-top:5px;max-width:340px;margin-inline:auto;line-height:1.6;}
+.toast{
+  position:fixed;bottom:22px;inset-inline-end:22px;z-index:100;display:flex;align-items:center;gap:9px;
+  background:var(--surface);border:1px solid var(--line-2);border-radius:10px;padding:11px 15px;
+  font-size:12.5px;box-shadow:var(--shadow);opacity:0;transform:translateY(8px);pointer-events:none;transition:.22s;max-width:380px;
+}
+.toast.show{opacity:1;transform:none;}
+.toast .ic{width:15px;height:15px;color:var(--green);flex:none;}
+.toast.error .ic{color:var(--accent);}
+.modal{position:fixed;inset:0;z-index:200;display:none;place-items:center;padding:22px;background:rgba(4,3,3,.66);backdrop-filter:blur(5px);}
+.modal.open{display:grid;animation:fade .18s both;}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.dialog{width:100%;max-width:400px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:16px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.5);animation:rise .22s both;}
+.dialog h3{font-family:var(--font-display);font-size:21px;font-weight:500;letter-spacing:-.3px;}
+.dialog p{font-size:12.5px;color:var(--ink-2);margin-top:8px;line-height:1.6;}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;}
+.update-banner{display:none;align-items:center;gap:12px;padding:9px 16px;background:var(--amber-soft);border-bottom:1px solid var(--amber-soft);font-size:11.5px;color:var(--amber);position:relative;z-index:3;}
+.update-banner.show{display:flex;}
+.update-banner code{font-family:var(--font-mono);background:rgba(0,0,0,.2);padding:2px 5px;border-radius:4px;}
+.update-banner .spacer{flex:1;}
+
+/* ── responsive ─────────────────────────────────────────────────────────── */
+@media(max-width:1060px){
+  :root{--rail:76px;}
+  .brand-txt,.nav-item span,.rail-jobs .rj-meta,.rail-jobs .rj-title span,.nav-label,.rail-meta span:first-child{display:none;}
+  .brand{justify-content:center;padding-inline:0;}
+  .nav-item{justify-content:center;padding:10px;}
+  .nav-item.active::before{inset-inline-start:-14px;}
+  .rail-job{padding:9px;display:grid;place-items:center;}
+  .rail-job .rj-title{gap:0;}
+  .rail-foot{align-items:center;}
+  .rail-links{flex-direction:column;}
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .set-grid{grid-template-columns:1fr;}
+}
+@media(max-width:760px){
+  .topbar{height:66px;padding:0 18px;}
+  .topbar h1{font-size:22px;}
+  #version-pill,.pill.slots-pill{display:none;}
+  .wrap{padding:20px 16px 80px;}
+  .hero{padding-bottom:20px;align-items:flex-start;}
+  .hero-mark{display:none;}
+  .hero h2{font-size:38px;}
+  .composer{padding:15px;}
+  .composer-foot{flex-direction:column;align-items:stretch;}
+  .composer-foot .btn{width:100%;}
+  .opts{gap:14px;}
+  .url-actions .mini-btn span{display:none;}
+  .hist{grid-template-columns:92px minmax(0,1fr);gap:11px;}
+  .hist-thumb{width:92px;height:56px;}
+  .hist-actions{grid-column:1/-1;justify-content:flex-start;max-width:none;}
+  .vgrid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));}
+  .stats{grid-template-columns:1fr 1fr;gap:8px;}
+  .stat-v{font-size:23px;}
+  .toolbar{gap:7px;}
+  .search{max-width:none;flex-basis:100%;}
+  .filters{width:100%;overflow-x:auto;}
+}
+@media(max-width:760px){
+  .app{flex-direction:column;}
+  .rail{
+    position:fixed; inset-inline:0; bottom:0; width:100%; height:62px; z-index:30;
+    flex-direction:row; align-items:center; padding:0 8px; border-inline-end:none;
+    border-top:1px solid var(--line-2); background:color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter:blur(14px);
+  }
+  .brand,.rail-jobs,.nav-label,.rail-foot{display:none!important;}
+  .nav{flex-direction:row;flex:1;justify-content:space-around;align-items:center;gap:2px;height:100%;}
+  .nav-item{flex-direction:column;gap:3px;font-size:9px;padding:7px 4px;flex:1;justify-content:center;border-radius:9px;}
+  .nav-item span{display:block!important;}
+  .nav-item .ic{width:19px;height:19px;}
+  .nav-item.active::before{display:none;}
+  .main{height:calc(100dvh - 62px);}
+  .top-theme{display:grid;}
+  .wrap{padding-bottom:40px;}
+  .scroll{overscroll-behavior:contain;}
+  .topbar{padding-inline:16px;}
+  .stats{gap:8px;margin-bottom:20px;}
+  .stat{padding:12px 13px;}
+  .stat-v{font-size:24px;}
+  .stat-s{font-size:9.5px;}
+  .activity{height:20px;}
+  .hist{padding:10px;gap:10px;}
+  .hist-url{display:none;}
+  .section-head{flex-wrap:wrap;gap:8px;}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important;}
+}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M6.5 10.5 12 16l5.5-5.5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6h.09A1.7 1.7 0 0 0 10 3.05V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5Z"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6.5 7l1 13h9l1-13"/><path d="M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/></symbol>
+  <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.2-6-2.8M15 21v-3.4a3 3 0 0 0-.8-2.3c2.7-.3 5.5-1.3 5.5-6a4.7 4.7 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1-.3-3.4 1.3a11.5 11.5 0 0 0-6 0C6.5 2.6 5.5 2.9 5.5 2.9a4.3 4.3 0 0 0-.1 3.2A4.7 4.7 0 0 0 4 9.3c0 4.7 2.8 5.7 5.5 6a3 3 0 0 0-.8 2.3V21"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5.5A2.5 2.5 0 0 0 12.5 3H6a2 2 0 0 0-2 2v8"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></symbol>
+  <symbol id="i-drive" viewBox="0 0 24 24"><path d="M4 14h16M6 6h12l3 8H3Z"/><path d="M7 18h.01M11 18h.01"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M5 12H1M23 12h-4M6.3 6.3l2.8 2.8M14.9 14.9l2.8 2.8M17.7 6.3l-2.8 2.8M9.1 14.9l-2.8 2.8"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 22 20H2Z"/><path d="M12 9v5M12 17h.01"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3Z"/></symbol>
+  <symbol id="i-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 19.1a10 10 0 0 0 0-14.2"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="brand-txt">
+        <div class="brand-name">ytdpro</div>
+        <div class="brand-sub">local media vault</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-view="download">
+        <svg class="ic"><use href="#i-download"/></svg><span data-i18n="nav.download">Download</span>
+      </button>
+      <button class="nav-item" data-view="history">
+        <svg class="ic"><use href="#i-clock"/></svg><span data-i18n="nav.history">Library</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <svg class="ic"><use href="#i-settings"/></svg><span data-i18n="nav.settings">Settings</span>
+      </button>
+      <div class="nav-label" id="rail-label" data-i18n="nav.active">In progress</div>
+      <div class="rail-jobs" id="rail-jobs"></div>
+    </nav>
+    <div class="rail-foot">
+      <div class="rail-meta"><span class="mono" id="rail-version">yt-dlp</span><span class="dot" id="rail-dot"></span></div>
+      <div class="rail-links">
+        <a class="icon-btn" id="repo-link" href="https://github.com/ethicalvulnlab/ytdpro" target="_blank" rel="noopener" aria-label="GitHub repository"><svg class="ic sm"><use href="#i-github"/></svg></a>
+        <button class="icon-btn" id="theme-btn" onclick="cycleTheme()" aria-label="Toggle theme"><svg class="ic sm"><use href="#i-sun"/></svg></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+<div class="update-banner" id="update-banner">
+  <svg class="ic sm"><use href="#i-alert"/></svg>
+  <span id="update-text" class="spacer"></span>
+  <button class="mini-btn" onclick="dismissUpdate()"><svg class="ic sm"><use href="#i-x"/></svg></button>
+</div>
+
+    <header class="topbar">
+      <div class="title-wrap">
+        <div class="kicker" id="view-kicker">Workspace</div>
+        <h1 id="view-title">Download</h1>
+      </div>
+      <div class="top-actions">
+        <span class="pill slots-pill" id="slots-pill" style="display:none"><span class="dot live"></span><span id="slots-txt"></span></span>
+        <span class="pill" id="version-pill"><span class="dot"></span><span id="version-txt">yt-dlp</span></span>
+        <button class="icon-btn top-theme" id="theme-btn-top" onclick="cycleTheme()" aria-label="Toggle theme"><svg class="ic sm"><use href="#i-sun"/></svg></button>
+      </div>
+    </header>
+
+    <div class="scroll" id="scroll">
+      <div class="wrap">
+
+        <!-- ── DOWNLOAD ─────────────────────────────────────────────────── -->
+        <section class="view active" id="view-download">
+          <div class="hero">
+            <div class="hero-copy">
+              <div class="eyebrow" data-i18n="hero.eyebrow">Universal media fetcher</div>
+              <h2 data-i18n-html="hero.title">Bring it <em>home.</em></h2>
+              <p data-i18n="hero.sub">Paste a link from YouTube, TikTok, X, Instagram or any of the 1000+ sites yt-dlp knows. Files land on your disk, never in someone else's cloud.</p>
+            </div>
+            <div class="hero-mark">
+              <div>
+                <div class="hero-ring">
+                  <svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="33"/><circle class="arc" cx="37" cy="37" r="33" id="hero-arc"/></svg>
+                  <div class="hero-num" id="hero-count">0</div>
+                </div>
+                <div class="hero-cap" data-i18n="hero.saved">videos saved</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card composer">
+            <div class="segmented" role="tablist" aria-label="Download mode">
+              <button class="seg active" data-mode="single"><svg class="ic"><use href="#i-video"/></svg><span data-i18n="mode.single">Single</span></button>
+              <button class="seg" data-mode="playlist"><svg class="ic"><use href="#i-list"/></svg><span data-i18n="mode.playlist">Playlist</span></button>
+              <button class="seg" data-mode="channel"><svg class="ic"><use href="#i-radio"/></svg><span data-i18n="mode.channel">Channel</span></button>
+            </div>
+
+            <div class="url-shell">
+              <svg class="ic"><use href="#i-link"/></svg>
+              <input id="url-input" type="text" spellcheck="false" autocomplete="off" placeholder="https://youtube.com/watch?v=…" data-i18n-ph="url.placeholder">
+              <div class="url-actions">
+                <button class="mini-btn" id="paste-btn" onclick="pasteUrl()" title="Paste from clipboard"><svg class="ic"><use href="#i-copy"/></svg><span data-i18n="act.paste">Paste</span></button>
+                <button class="mini-btn" id="preview-btn" onclick="fetchPreview()" title="Preview"><svg class="ic"><use href="#i-spark"/></svg><span data-i18n="act.preview">Preview</span></button>
+              </div>
+            </div>
+
+            <div class="preview" id="preview">
+              <div id="pv-thumb-wrap"><div class="pv-ph"><svg class="ic"><use href="#i-film"/></svg></div></div>
+              <div class="pv-body">
+                <div class="pv-title" id="pv-title"></div>
+                <div class="pv-meta" id="pv-meta"></div>
+              </div>
+            </div>
+
+            <div class="opts">
+              <div class="field">
+                <label data-i18n="lb.quality">Quality</label>
+                <div class="qchips" id="qchips">
+                  <button class="qchip active" data-quality="best" data-i18n="q.best">Best</button>
+                  <button class="qchip" data-quality="1080p">1080p</button>
+                  <button class="qchip" data-quality="720p">720p</button>
+                  <button class="qchip" data-quality="480p">480p</button>
+                  <button class="qchip" data-quality="360p">360p</button>
+                  <button class="qchip" data-quality="audio" data-i18n="q.audio">Audio</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="channel-opts" id="ch-opts">
+              <div class="field">
+                <label data-i18n="lb.section">Section</label>
+                <select class="inp" id="section-sel">
+                  <option value="videos" data-i18n="sec.videos">Videos</option>
+                  <option value="shorts" data-i18n="sec.shorts">Shorts</option>
+                  <option value="streams" data-i18n="sec.streams">Streams</option>
+                  <option value="all" data-i18n="sec.all">Everything</option>
+                </select>
+              </div>
+              <div class="field">
+                <label data-i18n="lb.after">Published after</label>
+                <input class="inp" type="date" id="date-after">
+              </div>
+              <div class="field">
+                <label data-i18n="lb.before">Published before</label>
+                <input class="inp" type="date" id="date-before">
+              </div>
+            </div>
+
+            <div class="composer-foot">
+              <div class="hint"><span class="key">↵</span><span data-i18n="hint.start">to start · drop a link anywhere</span></div>
+              <button class="btn btn-accent" id="start-btn" onclick="startDownload()">
+                <svg class="ic"><use href="#i-download"/></svg><span data-i18n="act.start">Start download</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="jobs-area"></div>
+
+          <section class="recent" id="recent-wrap">
+            <div class="section-head">
+              <div>
+                <h2 data-i18n="recent.title">Recent captures</h2>
+                <p data-i18n="recent.sub">Pick up where you left off.</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="showView('history')"><span data-i18n="recent.all">Open library</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+            </div>
+            <div class="recent-grid" id="recent-grid"></div>
+          </section>
+        </section>
+
+        <!-- ── HISTORY ──────────────────────────────────────────────────── -->
+        <section class="view" id="view-history">
+          <div class="stats" id="stats-row">
+            <div class="stat"><div class="stat-k" data-i18n="stat.videos">Videos banked</div><div class="stat-v" id="stat-videos">—</div><div class="stat-s" id="stat-videos-sub">—</div></div>
+            <div class="stat"><div class="stat-k" data-i18n="stat.success">Success rate</div><div class="stat-v" id="stat-success">—</div><div class="stat-s" data-i18n="stat.success.sub">across the library</div></div>
+            <div class="stat"><div class="stat-k" data-i18n="stat.disk">On disk</div><div class="stat-v" id="stat-disk">—</div><div class="stat-s" id="stat-disk-sub">—</div></div>
+            <div class="stat"><div class="stat-k" data-i18n="stat.activity">Last 14 days</div><div class="activity" id="stat-activity"></div><div class="stat-s" id="stat-activity-sub">—</div></div>
+          </div>
+
+          <div class="section-head" style="margin-top:0">
+            <div>
+              <h2 data-i18n="lib.title">Your library</h2>
+              <p data-i18n="lib.sub">Every download is remembered. Relaunch it, retry what failed, or open the folder.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="clear-btn" onclick="clearHistory()"><svg class="ic"><use href="#i-trash"/></svg><span data-i18n="act.clear">Clear</span></button>
+          </div>
+
+          <div class="toolbar">
+            <label class="search">
+              <svg class="ic"><use href="#i-search"/></svg>
+              <input id="hist-search" type="search" placeholder="Search title or URL…" data-i18n-ph="search.placeholder">
+            </label>
+            <div class="filters" id="hist-filters">
+              <button class="filt active" data-status="all" data-i18n="filt.all">All</button>
+              <button class="filt" data-status="done" data-i18n="filt.done">Done</button>
+              <button class="filt" data-status="error" data-i18n="filt.failed">Failed</button>
+              <button class="filt" data-status="cancelled" data-i18n="filt.cancelled">Cancelled</button>
+            </div>
+          </div>
+
+          <div class="hist-list" id="hist-list"></div>
+        </section>
+
+        <!-- ── SETTINGS ─────────────────────────────────────────────────── -->
+        <section class="view" id="view-settings">
+          <div class="section-head" style="margin-top:0">
+            <div>
+              <h2 data-i18n="set.title">Preferences</h2>
+              <p data-i18n="set.sub">Tune how ytdpro fetches, stores and displays your media.</p>
+            </div>
+          </div>
+
+          <div class="set-grid">
+            <div class="panel" style="grid-column:1/-1">
+              <div class="panel-head"><svg class="ic"><use href="#i-drive"/></svg><h3 data-i18n="set.storage">Storage</h3></div>
+              <div class="panel-body">
+                <div class="setting stack">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_folder">Download folder</div><div class="s-desc" data-i18n="sdesc_folder">Where files are saved on disk.</div></div>
+                  <div class="big-input"><input class="inp" type="text" id="s-dir" placeholder="~/Downloads/ytdpro"><button class="btn btn-quiet btn-sm" onclick="openDownloadDir()"><svg class="ic"><use href="#i-folder"/></svg><span data-i18n="act.open">Open</span></button></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head"><svg class="ic"><use href="#i-download"/></svg><h3 data-i18n="set.downloads">Downloads</h3></div>
+              <div class="panel-body">
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_conc">Concurrent downloads</div><div class="s-desc" data-i18n="sdesc_conc">Changes apply to active downloads too.</div></div>
+                  <div class="range-row"><input type="range" id="s-conc" min="1" max="10" step="1" oninput="concSlider(this.value)"><span class="range-val" id="s-conc-val">3</span></div>
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_quality">Default quality</div><div class="s-desc" data-i18n="sdesc_quality">Pre-selected in the download form.</div></div>
+                  <select class="inp" id="s-quality">
+                    <option value="best" data-i18n="q.best">Best available</option>
+                    <option value="1080p">1080p</option><option value="720p">720p</option>
+                    <option value="480p">480p</option><option value="360p">360p</option>
+                    <option value="audio" data-i18n="q.audio.mp3">Audio only (mp3)</option>
+                  </select>
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_subs">Subtitles</div><div class="s-desc" data-i18n="sdesc_subs">Download subtitle files with videos.</div></div>
+                  <select class="inp" id="s-subs">
+                    <option value="" data-i18n="subs.none">None</option>
+                    <option value="en" data-i18n="subs.en">English</option>
+                    <option value="all" data-i18n="subs.all">All languages</option>
+                  </select>
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_sb">SponsorBlock</div><div class="s-desc" data-i18n="sdesc_sb">Remove sponsor and self-promo segments automatically.</div></div>
+                  <button class="switch" id="s-sb" role="switch" aria-checked="false" onclick="toggleSwitch(this)"></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head"><svg class="ic"><use href="#i-radio"/></svg><h3 data-i18n="set.network">Network</h3></div>
+              <div class="panel-body">
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_timeout">Socket timeout</div><div class="s-desc" data-i18n="sdesc_timeout">Network wait limit per request, in seconds.</div></div>
+                  <input class="inp" type="number" id="s-timeout" min="5" max="120">
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_speed">Speed limit</div><div class="s-desc" data-i18n="sdesc_speed">Megabytes per second. 0 means no limit.</div></div>
+                  <input class="inp" type="number" id="s-speed" min="0" max="100" step="0.5">
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_sleep">Pause between items</div><div class="s-desc" data-i18n="sdesc_sleep">Base delay between channel requests, in seconds.</div></div>
+                  <input class="inp" type="number" id="s-sleep" min="0" max="30">
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_maxsleep">Maximum pause</div><div class="s-desc" data-i18n="sdesc_maxsleep">Upper bound for the random delay.</div></div>
+                  <input class="inp" type="number" id="s-maxsleep" min="0" max="60">
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head"><svg class="ic"><use href="#i-link"/></svg><h3 data-i18n="set.access">Access</h3></div>
+              <div class="panel-body">
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_cookies">Browser cookies</div><div class="s-desc" data-i18n="sdesc_cookies">For private or age-restricted videos. Close the browser first.</div></div>
+                  <select class="inp" id="s-cookies">
+                    <option value="" data-i18n="cookies.none">None</option>
+                    <option value="chrome">Chrome</option><option value="firefox">Firefox</option>
+                    <option value="chromium">Chromium</option><option value="edge">Edge</option>
+                    <option value="brave">Brave</option><option value="safari">Safari</option>
+                  </select>
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_retention">Keep history for</div><div class="s-desc" data-i18n="sdesc_retention">Older entries are pruned automatically.</div></div>
+                  <select class="inp" id="s-retention">
+                    <option value="30">30 days</option><option value="90">90 days</option>
+                    <option value="365">1 year</option><option value="0">Forever</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head"><svg class="ic"><use href="#i-sun"/></svg><h3 data-i18n="set.interface">Interface</h3></div>
+              <div class="panel-body">
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_lang">Language</div><div class="s-desc" data-i18n="sdesc_lang">Interface language, including right-to-left layouts.</div></div>
+                  <select class="inp" id="s-lang">
+                    <option value="en">English</option><option value="fr">Français</option><option value="ar">العربية</option>
+                  </select>
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_theme">Appearance</div><div class="s-desc" data-i18n="sdesc_theme">Switch between the dark room and the paper archive.</div></div>
+                  <select class="inp" id="s-theme">
+                    <option value="dark" data-i18n="theme.dark">Dark room</option>
+                    <option value="light" data-i18n="theme.light">Paper archive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="save-row">
+            <button class="btn btn-accent" onclick="saveSettings()"><svg class="ic"><use href="#i-check"/></svg><span data-i18n="act.save">Save preferences</span></button>
+            <button class="btn btn-ghost" onclick="resetSettings()"><span data-i18n="act.reset">Reset</span></button>
+            <span class="save-note" id="save-note"><svg class="ic sm"><use href="#i-check"/></svg><span data-i18n="badge.saved">Saved</span></span>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"><svg class="ic"><use href="#i-check"/></svg><span id="toast-txt"></span></div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true">
+  <div class="dialog">
+    <h3 id="modal-title"></h3>
+    <p id="modal-body"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost btn-sm" id="modal-cancel"></button>
+      <button class="btn btn-danger btn-sm" id="modal-ok"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════════════════════════════════ */
+let uiMode = 'single';
+let curView = 'download';
+let defaultQuality = 'best';
+let historyState = { q: '', status: 'all', mode: 'all', items: [], total: 0 };
+const jobState = new Map();      // jobId -> {es, timer, logOpen, confirmed, done, status}
+const detailCache = new Map();
+let histTimer = null;
+let allStats = null;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   i18n
+   ═══════════════════════════════════════════════════════════════════════════ */
+const I18N = {
+en: {
+  'nav.download':'Download','nav.history':'Library','nav.settings':'Settings','nav.active':'In progress',
+  'view.download':'Download','view.history':'Library','view.settings':'Settings',
+  'view.download.kicker':'Workspace','view.history.kicker':'Archive','view.settings.kicker':'Control room',
+  'hero.eyebrow':'Universal media fetcher','hero.title':'Bring it <em>home.</em>',
+  'hero.sub':'Paste a link from YouTube, TikTok, X, Instagram or any of the 1000+ sites yt-dlp knows. Files land on your disk, never in someone else\u2019s cloud.',
+  'hero.saved':'videos saved',
+  'mode.single':'Single','mode.playlist':'Playlist','mode.channel':'Channel',
+  'url.placeholder':'https://youtube.com/watch?v=…',
+  'act.paste':'Paste','act.preview':'Preview','act.start':'Start download','act.open':'Open',
+  'act.save':'Save preferences','act.reset':'Reset','act.clear':'Clear','act.retry':'Retry',
+  'act.relaunch':'Relaunch','act.details':'Details','act.hide':'Hide','act.delete':'Delete',
+  'act.openfolder':'Open folder','act.retryfailed':'Retry failed','act.openfile':'Open file',
+  'act.cancel':'Cancel','act.close':'Close','act.confirm':'Confirm','act.gotit':'Got it',
+  'lb.quality':'Quality','lb.section':'Section','lb.after':'Published after','lb.before':'Published before',
+  'q.best':'Best','q.audio':'Audio','q.audio.mp3':'Audio only (mp3)',
+  'sec.videos':'Videos','sec.shorts':'Shorts','sec.streams':'Streams','sec.all':'Everything',
+  'hint.start':'to start · drop a link anywhere',
+  'stat.videos':'Videos banked','stat.success':'Success rate','stat.disk':'On disk','stat.activity':'Last 14 days',
+  'recent.title':'Recent captures','recent.sub':'Pick up where you left off.','recent.all':'Open library',
+  'stat.success.sub':'across the library','stat.videos.sub':'{n} downloads','stat.disk.sub':'in the download folder',
+  'lib.title':'Your library','lib.sub':'Every download is remembered. Relaunch it, retry what failed, or open the folder.',
+  'search.placeholder':'Search title or URL…',
+  'filt.all':'All','filt.done':'Done','filt.failed':'Failed','filt.cancelled':'Cancelled',
+  'hist.empty':'Nothing here yet','hist.empty.sub':'Your downloads will appear here with their titles, thumbnails and files — ready to relaunch at any time.',
+  'hist.noresult':'Nothing matches','hist.noresult.sub':'Try another search or filter.',
+  'hist.missing':'Untitled download',
+  'hist.videos':'{n} videos','hist.video.one':'1 video','hist.done':'{n} done','hist.failed':'{n} failed',
+  'hist.size':'{s}','hist.quality':'Quality: {q}',
+  'set.title':'Preferences','set.sub':'Tune how ytdpro fetches, stores and displays your media.',
+  'set.storage':'Storage','set.downloads':'Downloads','set.network':'Network','set.access':'Access','set.interface':'Interface',
+  's_folder':'Download folder','sdesc_folder':'Where files are saved on disk.',
+  's_conc':'Concurrent downloads','sdesc_conc':'Changes apply to active downloads too.',
+  's_quality':'Default quality','sdesc_quality':'Pre-selected in the download form.',
+  's_timeout':'Socket timeout','sdesc_timeout':'Network wait limit per request, in seconds.',
+  's_speed':'Speed limit','sdesc_speed':'Megabytes per second. 0 means no limit.',
+  's_sleep':'Pause between items','sdesc_sleep':'Base delay between channel requests, in seconds.',
+  's_maxsleep':'Maximum pause','sdesc_maxsleep':'Upper bound for the random delay.',
+  's_cookies':'Browser cookies','sdesc_cookies':'For private or age-restricted videos. Close the browser first.',
+  's_subs':'Subtitles','sdesc_subs':'Download subtitle files with videos.',
+  's_sb':'SponsorBlock','sdesc_sb':'Remove sponsor and self-promo segments automatically.',
+  's_retention':'Keep history for','sdesc_retention':'Older entries are pruned automatically.',
+  's_lang':'Language','sdesc_lang':'Interface language, including right-to-left layouts.',
+  's_theme':'Appearance','sdesc_theme':'Switch between the dark room and the paper archive.',
+  'cookies.none':'None','subs.none':'None','subs.en':'English','subs.all':'All languages',
+  'theme.dark':'Dark room','theme.light':'Paper archive',
+  'badge.saved':'Saved',
+  'st.scanning':'Scanning','st.queued':'Queued','st.ready':'Ready','st.running':'Downloading',
+  'st.done':'Done','st.error':'Error','st.cancelled':'Cancelled','st.processing':'Merging',
+  'st.skipped':'Skipped','st.downloading':'Downloading',
+  'job.title':'Download','job.videos':'{n} videos','job.slots':'{a}/{m} active',
+  'job.scanning':'Scanning the link…','job.ready':'Found {n} videos','job.ready.one':'Found 1 video',
+  'job.ready.sub':'Will download {m} at a time. Review, then confirm.',
+  'job.confirm':'Download {n} videos','job.confirm.one':'Download 1 video','job.log':'Log',
+  'toast.paste':'Paste a URL first.','toast.preview':'Preview failed — check the URL.',
+  'toast.server':'Could not reach the server.','toast.started':'Download started.',
+  'toast.saved':'Preferences saved.','toast.reset':'Preferences reset.',
+  'toast.retry':'Retrying…','toast.relaunch':'Relaunching into a new download.',
+  'toast.deleted':'Removed from the library.','toast.cleared':'Library cleared.',
+  'toast.nofailed':'This entry has no failed videos.','toast.cancel':'Cancellation requested.',
+  'toast.copied':'Pasted from clipboard.','toast.copyfail':'Clipboard is not available.',
+  'toast.opened':'Opened.','toast.openfail':'Could not open that location.',
+  'toast.loadfail':'Could not load the library.','toast.setfail':'Could not save preferences.',
+  'confirm.clear.title':'Clear the library?',
+  'confirm.clear.body':'History entries disappear, but the downloaded files stay exactly where they are.',
+  'confirm.clear.ok':'Clear library',
+  'confirm.delete.title':'Remove this entry?',
+  'confirm.delete.body':'The download record will be deleted. The files on disk are not touched.',
+  'confirm.delete.ok':'Remove',
+},
+fr: {
+  'nav.download':'Télécharger','nav.history':'Bibliothèque','nav.settings':'Réglages','nav.active':'En cours',
+  'view.download':'Télécharger','view.history':'Bibliothèque','view.settings':'Réglages',
+  'view.download.kicker':'Atelier','view.history.kicker':'Archives','view.settings.kicker':'Salle de contrôle',
+  'hero.eyebrow':'Récupérateur universel','hero.title':'Ramenez-le <em>à la maison.</em>',
+  'hero.sub':'Collez un lien YouTube, TikTok, X, Instagram ou l\u2019un des 1000+ sites gérés par yt-dlp. Les fichiers restent sur votre disque, jamais dans le cloud d\u2019un autre.',
+  'hero.saved':'vidéos archivées',
+  'mode.single':'Vidéo','mode.playlist':'Playlist','mode.channel':'Chaîne',
+  'url.placeholder':'https://youtube.com/watch?v=…',
+  'act.paste':'Coller','act.preview':'Aperçu','act.start':'Lancer le téléchargement','act.open':'Ouvrir',
+  'act.save':'Enregistrer','act.reset':'Réinitialiser','act.clear':'Vider','act.retry':'Réessayer',
+  'act.relaunch':'Relancer','act.details':'Détails','act.hide':'Masquer','act.delete':'Supprimer',
+  'act.openfolder':'Dossier','act.retryfailed':'Réessayer les échecs','act.openfile':'Ouvrir le fichier',
+  'act.cancel':'Annuler','act.close':'Fermer','act.confirm':'Confirmer','act.gotit':'Compris',
+  'lb.quality':'Qualité','lb.section':'Section','lb.after':'Publié après','lb.before':'Publié avant',
+  'q.best':'Meilleure','q.audio':'Audio','q.audio.mp3':'Audio seul (mp3)',
+  'sec.videos':'Vidéos','sec.shorts':'Shorts','sec.streams':'Directs','sec.all':'Tout',
+  'hint.start':'pour lancer · déposez un lien n\u2019importe où',
+  'stat.videos':'Vidéos archivées','stat.success':'Taux de réussite','stat.disk':'Sur le disque','stat.activity':'14 derniers jours',
+  'recent.title':'Captures récentes','recent.sub':'Reprenez où vous en étiez.','recent.all':'Ouvrir la bibliothèque',
+  'stat.success.sub':'sur toute la bibliothèque','stat.videos.sub':'{n} téléchargements','stat.disk.sub':'dans le dossier de téléchargement',
+  'lib.title':'Votre bibliothèque','lib.sub':'Chaque téléchargement est mémorisé. Relancez-le, réessayez les échecs, ou ouvrez le dossier.',
+  'search.placeholder':'Rechercher un titre ou une URL…',
+  'filt.all':'Tout','filt.done':'Terminés','filt.failed':'Échecs','filt.cancelled':'Annulés',
+  'hist.empty':'Rien pour l\u2019instant','hist.empty.sub':'Vos téléchargements apparaîtront ici avec titres, vignettes et fichiers — prêts à être relancés.',
+  'hist.noresult':'Aucun résultat','hist.noresult.sub':'Essayez une autre recherche ou un autre filtre.',
+  'hist.missing':'Téléchargement sans titre',
+  'hist.videos':'{n} vidéos','hist.video.one':'1 vidéo','hist.done':'{n} terminés','hist.failed':'{n} échecs',
+  'hist.size':'{s}','hist.quality':'Qualité : {q}',
+  'set.title':'Préférences','set.sub':'Réglez la façon dont ytdpro récupère, stocke et affiche vos médias.',
+  'set.storage':'Stockage','set.downloads':'Téléchargements','set.network':'Réseau','set.access':'Accès','set.interface':'Interface',
+  's_folder':'Dossier de téléchargement','sdesc_folder':'Où les fichiers sont enregistrés.',
+  's_conc':'Téléchargements simultanés','sdesc_conc':'S\u2019applique aussi aux téléchargements en cours.',
+  's_quality':'Qualité par défaut','sdesc_quality':'Présélectionnée dans le formulaire.',
+  's_timeout':'Délai réseau','sdesc_timeout':'Attente maximale par requête, en secondes.',
+  's_speed':'Limite de vitesse','sdesc_speed':'Mégaoctets par seconde. 0 = illimité.',
+  's_sleep':'Pause entre les éléments','sdesc_sleep':'Délai de base entre les requêtes de chaîne, en secondes.',
+  's_maxsleep':'Pause maximale','sdesc_maxsleep':'Limite supérieure du délai aléatoire.',
+  's_cookies':'Cookies du navigateur','sdesc_cookies':'Pour les vidéos privées ou soumises à l\u2019âge. Fermez le navigateur avant.',
+  's_subs':'Sous-titres','sdesc_subs':'Télécharger les sous-titres avec les vidéos.',
+  's_sb':'SponsorBlock','sdesc_sb':'Supprimer automatiquement les segments sponsor et auto-promo.',
+  's_retention':'Conserver l\u2019historique','sdesc_retention':'Les entrées plus anciennes sont supprimées automatiquement.',
+  's_lang':'Langue','sdesc_lang':'Langue de l\u2019interface, y compris les mises en page de droite à gauche.',
+  's_theme':'Apparence','sdesc_theme':'Basculez entre la salle sombre et l\u2019archive papier.',
+  'cookies.none':'Aucun','subs.none':'Aucun','subs.en':'Anglais','subs.all':'Toutes les langues',
+  'theme.dark':'Salle sombre','theme.light':'Archive papier',
+  'badge.saved':'Enregistré',
+  'st.scanning':'Analyse','st.queued':'En attente','st.ready':'Prêt','st.running':'Téléchargement',
+  'st.done':'Terminé','st.error':'Erreur','st.cancelled':'Annulé','st.processing':'Fusion',
+  'st.skipped':'Ignoré','st.downloading':'Téléchargement',
+  'job.title':'Téléchargement','job.videos':'{n} vidéos','job.slots':'{a}/{m} actifs',
+  'job.scanning':'Analyse du lien…','job.ready':'{n} vidéos trouvées','job.ready.one':'1 vidéo trouvée',
+  'job.ready.sub':'Téléchargera {m} à la fois. Vérifiez puis confirmez.',
+  'job.confirm':'Télécharger {n} vidéos','job.confirm.one':'Télécharger 1 vidéo','job.log':'Journal',
+  'toast.paste':'Collez d\u2019abord une URL.','toast.preview':'Aperçu impossible — vérifiez l\u2019URL.',
+  'toast.server':'Serveur inaccessible.','toast.started':'Téléchargement lancé.',
+  'toast.saved':'Préférences enregistrées.','toast.reset':'Préférences réinitialisées.',
+  'toast.retry':'Nouvelle tentative…','toast.relaunch':'Relance dans un nouveau téléchargement.',
+  'toast.deleted':'Retiré de la bibliothèque.','toast.cleared':'Bibliothèque vidée.',
+  'toast.nofailed':'Cette entrée n\u2019a aucun échec.','toast.cancel':'Annulation demandée.',
+  'toast.copied':'Collé depuis le presse-papiers.','toast.copyfail':'Presse-papiers indisponible.',
+  'toast.opened':'Ouvert.','toast.openfail':'Impossible d\u2019ouvrir cet emplacement.',
+  'toast.loadfail':'Impossible de charger la bibliothèque.','toast.setfail':'Impossible d\u2019enregistrer.',
+  'confirm.clear.title':'Vider la bibliothèque ?',
+  'confirm.clear.body':'Les entrées disparaissent, mais les fichiers téléchargés restent à leur place.',
+  'confirm.clear.ok':'Vider',
+  'confirm.delete.title':'Retirer cette entrée ?',
+  'confirm.delete.body':'L\u2019enregistrement sera supprimé. Les fichiers sur le disque ne sont pas touchés.',
+  'confirm.delete.ok':'Retirer',
+},
+ar: {
+  'nav.download':'تنزيل','nav.history':'المكتبة','nav.settings':'الإعدادات','nav.active':'قيد التنفيذ',
+  'view.download':'تنزيل','view.history':'المكتبة','view.settings':'الإعدادات',
+  'view.download.kicker':'مساحة العمل','view.history.kicker':'الأرشيف','view.settings.kicker':'غرفة التحكم',
+  'hero.eyebrow':'مُحمِّل وسائط شامل','hero.title':'أحضره <em>إلى بيتك.</em>',
+  'hero.sub':'الصق رابطًا من يوتيوب أو تيك توك أو إكس أو إنستغرام أو أي من أكثر من 1000 موقع يدعمه yt-dlp. تبقى الملفات على قرصك، لا في سحابة غيرك.',
+  'hero.saved':'فيديو محفوظ',
+  'mode.single':'فيديو','mode.playlist':'قائمة','mode.channel':'قناة',
+  'url.placeholder':'https://youtube.com/watch?v=…',
+  'act.paste':'لصق','act.preview':'معاينة','act.start':'ابدأ التنزيل','act.open':'فتح',
+  'act.save':'حفظ الإعدادات','act.reset':'استعادة','act.clear':'تفريغ','act.retry':'إعادة',
+  'act.relaunch':'إعادة التشغيل','act.details':'التفاصيل','act.hide':'إخفاء','act.delete':'حذف',
+  'act.openfolder':'المجلد','act.retryfailed':'إعادة الفاشلة','act.openfile':'فتح الملف',
+  'act.cancel':'إلغاء','act.close':'إغلاق','act.confirm':'تأكيد','act.gotit':'حسنًا',
+  'lb.quality':'الجودة','lb.section':'القسم','lb.after':'نُشر بعد','lb.before':'نُشر قبل',
+  'q.best':'الأفضل','q.audio':'صوت','q.audio.mp3':'صوت فقط (mp3)',
+  'sec.videos':'الفيديوهات','sec.shorts':'المقاطع','sec.streams':'البث','sec.all':'الكل',
+  'hint.start':'للبدء · أفلت رابطًا في أي مكان',
+  'stat.videos':'فيديوهات محفوظة','stat.success':'نسبة النجاح','stat.disk':'على القرص','stat.activity':'آخر 14 يومًا',
+  'recent.title':'أحدث المحفوظات','recent.sub':'تابع من حيث توقفت.','recent.all':'افتح المكتبة',
+  'stat.success.sub':'عبر المكتبة','stat.videos.sub':'{n} تنزيلًا','stat.disk.sub':'في مجلد التنزيل',
+  'lib.title':'مكتبتك','lib.sub':'كل تنزيل محفوظ. أعد تشغيله، أعد محاولة الفاشل، أو افتح المجلد.',
+  'search.placeholder':'ابحث بالعنوان أو الرابط…',
+  'filt.all':'الكل','filt.done':'مكتمل','filt.failed':'فاشل','filt.cancelled':'ملغى',
+  'hist.empty':'لا شيء بعد','hist.empty.sub':'ستظهر تنزيلاتك هنا مع العناوين والصور والملفات — جاهزة لإعادة التشغيل.',
+  'hist.noresult':'لا نتائج','hist.noresult.sub':'جرّب بحثًا أو تصفية أخرى.',
+  'hist.missing':'تنزيل بلا عنوان',
+  'hist.videos':'{n} فيديو','hist.video.one':'فيديو واحد','hist.done':'{n} مكتمل','hist.failed':'{n} فاشل',
+  'hist.size':'{s}','hist.quality':'الجودة: {q}',
+  'set.title':'التفضيلات','set.sub':'اضبط كيفية جلب ytdpro لوسائطك وتخزينها وعرضها.',
+  'set.storage':'التخزين','set.downloads':'التنزيلات','set.network':'الشبكة','set.access':'الوصول','set.interface':'الواجهة',
+  's_folder':'مجلد التنزيل','sdesc_folder':'مكان حفظ الملفات على القرص.',
+  's_conc':'تنزيلات متزامنة','sdesc_conc':'يُطبَّق أيضًا على التنزيلات الجارية.',
+  's_quality':'الجودة الافتراضية','sdesc_quality':'محددة مسبقًا في النموذج.',
+  's_timeout':'مهلة الشبكة','sdesc_timeout':'أقصى انتظار لكل طلب، بالثواني.',
+  's_speed':'حد السرعة','sdesc_speed':'ميغابايت في الثانية. 0 = بلا حد.',
+  's_sleep':'فاصل بين العناصر','sdesc_sleep':'تأخير أساسي بين طلبات القناة، بالثواني.',
+  's_maxsleep':'أقصى فاصل','sdesc_maxsleep':'الحد الأعلى للتأخير العشوائي.',
+  's_cookies':'كوكيز المتصفح','sdesc_cookies':'للفيديوهات الخاصة أو المقيدة بالعمر. أغلق المتصفح أولًا.',
+  's_subs':'الترجمات','sdesc_subs':'نزّل ملفات الترجمة مع الفيديوهات.',
+  's_sb':'سبونسر بلوك','sdesc_sb':'إزالة مقاطع الإعلانات والترويج تلقائيًا.',
+  's_retention':'الاحتفاظ بالسجل','sdesc_retention':'تُحذف الإدخالات الأقدم تلقائيًا.',
+  's_lang':'اللغة','sdesc_lang':'لغة الواجهة، بما في ذلك التخطيط من اليمين إلى اليسار.',
+  's_theme':'المظهر','sdesc_theme':'بدّل بين الغرفة الداكنة وأرشيف الورق.',
+  'cookies.none':'بلا','subs.none':'بلا','subs.en':'الإنجليزية','subs.all':'كل اللغات',
+  'theme.dark':'غرفة داكنة','theme.light':'أرشيف ورقي',
+  'badge.saved':'تم الحفظ',
+  'st.scanning':'فحص','st.queued':'في الانتظار','st.ready':'جاهز','st.running':'جارٍ التنزيل',
+  'st.done':'تم','st.error':'خطأ','st.cancelled':'أُلغي','st.processing':'دمج',
+  'st.skipped':'تخطي','st.downloading':'جارٍ التنزيل',
+  'job.title':'تنزيل','job.videos':'{n} فيديو','job.slots':'{a}/{m} نشط',
+  'job.scanning':'جارٍ فحص الرابط…','job.ready':'تم العثور على {n} فيديو','job.ready.one':'تم العثور على فيديو واحد',
+  'job.ready.sub':'سيُنزّل {m} في المرة. راجع ثم أكِّد.',
+  'job.confirm':'نزّل {n} فيديو','job.confirm.one':'نزّل فيديو واحدًا','job.log':'السجل',
+  'toast.paste':'الصق رابطًا أولًا.','toast.preview':'فشلت المعاينة — تحقق من الرابط.',
+  'toast.server':'تعذر الوصول إلى الخادم.','toast.started':'بدأ التنزيل.',
+  'toast.saved':'تم حفظ التفضيلات.','toast.reset':'تمت استعادة التفضيلات.',
+  'toast.retry':'جارٍ إعادة المحاولة…','toast.relaunch':'إعادة التشغيل في تنزيل جديد.',
+  'toast.deleted':'أُزيل من المكتبة.','toast.cleared':'تم تفريغ المكتبة.',
+  'toast.nofailed':'لا توجد فيديوهات فاشلة.','toast.cancel':'تم طلب الإلغاء.',
+  'toast.copied':'تم اللصق من الحافظة.','toast.copyfail':'الحافظة غير متاحة.',
+  'toast.opened':'تم الفتح.','toast.openfail':'تعذر فتح هذا الموقع.',
+  'toast.loadfail':'تعذر تحميل المكتبة.','toast.setfail':'تعذر حفظ التفضيلات.',
+  'confirm.clear.title':'تفريغ المكتبة؟',
+  'confirm.clear.body':'ستختفي الإدخالات، لكن الملفات المنزلة تبقى في مكانها.',
+  'confirm.clear.ok':'تفريغ',
+  'confirm.delete.title':'إزالة هذا الإدخال؟',
+  'confirm.delete.body':'سيُحذف سجل التنزيل. لن تُمس الملفات على القرص.',
+  'confirm.delete.ok':'إزالة',
+}
+};
+let lang = localStorage.getItem('ytd-lang') || (navigator.language?.startsWith('fr') ? 'fr' : navigator.language?.startsWith('ar') ? 'ar' : 'en');
+
+function t(key, args){
+  let s = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
+  if(args) for(const k in args) s = s.split('{'+k+'}').join(args[k]);
+  return s;
+}
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  const s = document.getElementById('s-lang'); if(s) s.value = lang;
+  document.getElementById('view-title').textContent = t('view.' + curView);
+  document.getElementById('view-kicker').textContent = t('view.' + curView + '.kicker');
+  updateRail();
+  if(historyState.items.length) renderHistory();
+  updateSlotPill();
+}
+function setLang(v){ lang = v; localStorage.setItem('ytd-lang', v); applyLang(); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tiny helpers
+   ═══════════════════════════════════════════════════════════════════════════ */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  let data = {};
+  try { data = await r.json(); } catch(e){}
+  if(!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+  return data;
+}
+function fmtDur(s){
+  s = Number(s) || 0;
+  if(!s) return '';
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`;
+}
+function fmtBytes(b){
+  b = Number(b) || 0;
+  if(!b) return '0 B';
+  const u = ['B','KB','MB','GB','TB'];
+  let i = Math.floor(Math.log(b)/Math.log(1024));
+  i = Math.min(i, u.length-1);
+  const v = b / Math.pow(1024, i);
+  return (v >= 10 || i === 0 ? v.toFixed(0) : v.toFixed(1)) + ' ' + u[i];
+}
+function fmtDate(ts){
+  if(!ts) return '';
+  const d = new Date(Number(ts));
+  return d.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' · ' +
+         d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+function fmtRelative(ts){
+  const diff = Date.now() - Number(ts);
+  if(diff < 60000) return 'now';
+  if(diff < 3600000) return Math.floor(diff/60000) + 'm';
+  if(diff < 86400000) return Math.floor(diff/3600000) + 'h';
+  if(diff < 604800000) return Math.floor(diff/86400000) + 'd';
+  return new Date(Number(ts)).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+function toast(msg, isError){
+  const el = $('#toast');
+  $('#toast-txt').textContent = msg;
+  el.classList.toggle('error', !!isError);
+  el.querySelector('use').setAttribute('href', isError ? '#i-alert' : '#i-check');
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Theme
+   ═══════════════════════════════════════════════════════════════════════════ */
+function setTheme(th, persist = true){
+  document.documentElement.dataset.theme = th;
+  if(persist) localStorage.setItem('ytd-theme', th);
+  ['theme-btn','theme-btn-top'].forEach(id => {
+    const b = document.getElementById(id);
+    if(b) b.querySelector('use').setAttribute('href', th === 'dark' ? '#i-sun' : '#i-moon');
+  });
+  const sel = $('#s-theme'); if(sel) sel.value = th;
+}
+function cycleTheme(){ setTheme((document.documentElement.dataset.theme || 'dark') === 'dark' ? 'light' : 'dark'); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Navigation
+   ═══════════════════════════════════════════════════════════════════════════ */
+function showView(v){
+  curView = v;
+  $$('.view').forEach(el => el.classList.toggle('active', el.id === 'view-' + v));
+  $$('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === v));
+  document.getElementById('view-title').textContent = t('view.' + v);
+  document.getElementById('view-kicker').textContent = t('view.' + v + '.kicker');
+  $('#scroll').scrollTop = 0;
+  if(location.hash !== '#' + v) history.replaceState(null, '', '#' + v);
+  if(v === 'history'){ loadStats(); loadHistory(); }
+  if(v === 'settings'){ loadSettings(); }
+}
+$$('.nav-item').forEach(el => el.addEventListener('click', () => showView(el.dataset.view)));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Composer
+   ═══════════════════════════════════════════════════════════════════════════ */
+$$('.seg').forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
+function setMode(m){
+  uiMode = m;
+  $$('.seg').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+  $('#ch-opts').classList.toggle('show', m === 'channel');
+  clearPreview();
+}
+$$('.qchip').forEach(chip => chip.addEventListener('click', () => {
+  $$('.qchip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+}));
+function currentQuality(){
+  const el = document.querySelector('.qchip.active');
+  return el ? el.dataset.quality : defaultQuality;
+}
+function setQuality(q){
+  $$('.qchip').forEach(c => c.classList.toggle('active', c.dataset.quality === q));
+}
+
+let previewTimer = null;
+function onUrlInput(){
+  clearPreview();
+  clearTimeout(previewTimer);
+  const u = $('#url-input').value.trim();
+  if(u.length > 8) previewTimer = setTimeout(fetchPreview, 1100);
+}
+$('#url-input').addEventListener('input', onUrlInput);
+$('#url-input').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); startDownload(); } });
+function clearPreview(){ $('#preview').classList.remove('show'); }
+
+async function fetchPreview(){
+  const url = $('#url-input').value.trim();
+  if(!url) { toast(t('toast.paste'), true); return; }
+  const btn = $('#preview-btn'); btn.disabled = true;
+  try{
+    const d = await api('/api/info?url=' + encodeURIComponent(url));
+    $('#preview').classList.add('show');
+    $('#pv-title').textContent = d.title || 'Unknown';
+    const bits = [];
+    if(d.channel) bits.push(esc(d.channel));
+    if(d.duration) bits.push(fmtDur(d.duration));
+    if(d.is_playlist && d.count) bits.push(esc(d.count) + ' videos');
+    $('#pv-meta').innerHTML = bits.map(b => '<span>' + b + '</span>').join('');
+    const w = $('#pv-thumb-wrap');
+    if(d.thumbnail){
+      const img = document.createElement('img');
+      img.className = 'pv-thumb'; img.src = d.thumbnail; img.alt = '';
+      img.onerror = () => { img.style.display = 'none'; };
+      w.replaceChildren(img);
+    }
+    if(d.is_playlist && uiMode === 'single') setMode('playlist');
+  }catch(e){ toast(t('toast.preview'), true); }
+  btn.disabled = false;
+}
+
+async function pasteUrl(){
+  try{
+    const text = await navigator.clipboard.readText();
+    if(!text) return;
+    $('#url-input').value = text.trim();
+    onUrlInput();
+    toast(t('toast.copied'));
+  }catch(e){ toast(t('toast.copyfail'), true); }
+}
+
+async function startDownload(){
+  const url = $('#url-input').value.trim();
+  if(!url){ toast(t('toast.paste'), true); $('#url-input').focus(); return; }
+  const btn = $('#start-btn'); btn.disabled = true;
+  try{
+    const d = await api('/api/start', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        url, mode: uiMode, quality: currentQuality(),
+        dateAfter: $('#date-after').value || '',
+        dateBefore: $('#date-before').value || '',
+        section: $('#section-sel').value
+      })});
+    createJobPanel({id: d.jobId, ts: Date.now(), status: 'queued', mode: uiMode, title: '', videos: [],
+                    total_videos: 0, completed_videos: 0, failed_videos: 0, scan_count: 0});
+    $('#url-input').value = '';
+    clearPreview();
+    toast(t('toast.started'));
+  }catch(e){ toast(e.message, true); }
+  btn.disabled = false;
+}
+
+/* drag & drop */
+['dragenter','dragover'].forEach(ev => document.addEventListener(ev, e => {
+  if(curView !== 'download') return;
+  e.preventDefault(); $('#url-input').focus();
+}));
+document.addEventListener('drop', e => {
+  if(curView !== 'download') return;
+  e.preventDefault();
+  const txt = (e.dataTransfer?.getData('text') || '').trim();
+  if(txt){ $('#url-input').value = txt; onUrlInput(); }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Jobs
+   ═══════════════════════════════════════════════════════════════════════════ */
+function statusLabel(st){ return t('st.' + (st || 'queued')); }
+
+function createJobPanel(job){
+  const id = job.id;
+  if(jobState.has(id)) return;
+  jobState.set(id, {es:null, timer:null, logOpen:false, confirmed:false, done:!!job.done,
+                    status:job.status || 'queued'});
+  const panel = document.createElement('div');
+  panel.className = 'job';
+  panel.id = 'jp-' + id;
+  panel.dataset.job = id;
+  panel.innerHTML = `
+    <div class="job-head">
+      <span class="badge ${esc(job.status || 'queued')}" id="jb-${id}"><b></b><span>${esc(statusLabel(job.status))}</span></span>
+      <span class="jtitle" id="jtitle-${id}">${esc(job.title || t('job.title'))}</span>
+      <span class="jtime mono">${fmtDate(job.ts)}</span>
+      <button class="btn btn-xs btn-ghost" id="jfolder-${id}" style="display:none" data-act="job-folder"><svg class="ic"><use href="#i-folder"/></svg></button>
+      <button class="btn btn-xs btn-danger" id="jcancel-${id}" data-act="job-cancel">${esc(t('act.cancel'))}</button>
+      <button class="btn btn-xs btn-ghost" id="jclose-${id}" style="display:none" data-act="job-close"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="job-body">
+      <div id="jbody-${id}">
+        <div class="scanline"><div class="spinner"></div><span class="txt">${esc(t('job.scanning'))}</span><span class="count" id="jcount-${id}">0</span></div>
+      </div>
+      <div id="joverall-${id}" style="display:none">
+        <div class="overall">
+          <div class="bar"><i id="jbar-${id}"></i></div>
+          <div class="ov-stats" id="jstats-${id}"></div>
+        </div>
+      </div>
+      <div class="slots" id="jslots-${id}" style="display:none"></div>
+      <div class="vgrid" id="jgrid-${id}"></div>
+      <div class="job-foot">
+        <button class="logbtn" id="jlogbtn-${id}" data-act="job-log"><svg class="ic"><use href="#i-chevron"/></svg>${esc(t('job.log'))}</button>
+      </div>
+      <div class="logbox" id="jlog-${id}"></div>
+    </div>`;
+  $('#jobs-area').prepend(panel);
+  connectJob(id);
+  updateRail();
+  updateSlotPill();
+  if(job.videos && job.videos.length) processJobState(id, job);
+}
+
+function connectJob(id){
+  const st = jobState.get(id);
+  if(!st || st.done) return;
+  if(window.EventSource && !st.es){
+    try{
+      const es = new EventSource('/api/events/' + id);
+      st.es = es;
+      es.onmessage = ev => {
+        const d = JSON.parse(ev.data);
+        if(d.missing){ es.close(); st.es = null; startPolling(id); return; }
+        processJobState(id, d);
+      };
+      es.onerror = () => { es.close(); st.es = null; startPolling(id); };
+      return;
+    }catch(e){}
+  }
+  startPolling(id);
+}
+function startPolling(id){
+  const st = jobState.get(id);
+  if(!st || st.done || st.timer || st.es) return;
+  st.timer = setInterval(() => pollJob(id), 1400);
+}
+async function pollJob(id){
+  try{
+    const d = await api('/api/status/' + id);
+    processJobState(id, d);
+  }catch(e){ /* transient */ }
+}
+
+function processJobState(id, d){
+  const st = jobState.get(id);
+  if(!st) return;
+  st.status = d.status;
+  st.done = !!d.done;
+
+  const badge = $('#jb-' + id);
+  if(badge){ badge.className = 'badge ' + (d.status || 'queued'); badge.innerHTML = '<b></b><span>' + esc(statusLabel(d.status)) + '</span>'; }
+  const panel = $('#jp-' + id);
+  if(panel){ panel.classList.toggle('is-done', d.status === 'done'); panel.classList.toggle('is-error', d.status === 'error'); }
+  const titleEl = $('#jtitle-' + id);
+  if(titleEl) titleEl.textContent = d.title || t('job.title');
+
+  const cancelBtn = $('#jcancel-' + id), closeBtn = $('#jclose-' + id), folderBtn = $('#jfolder-' + id);
+  if(d.done){
+    if(cancelBtn) cancelBtn.style.display = 'none';
+    if(closeBtn) closeBtn.style.display = '';
+    if(folderBtn && d.out_dir){ folderBtn.style.display = ''; folderBtn.title = t('act.openfolder'); }
+  } else {
+    if(cancelBtn) cancelBtn.style.display = '';
+    if(closeBtn) closeBtn.style.display = 'none';
+    if(folderBtn) folderBtn.style.display = 'none';
+  }
+
+  if(d.status === 'scanning'){
+    const c = $('#jcount-' + id); if(c) c.textContent = d.scan_count || 0;
+    return;
+  }
+  const body = $('#jbody-' + id);
+  if(body && body.querySelector('.scanline')) body.innerHTML = '';
+
+  let ready = $('#jready-' + id);
+  if(d.status === 'ready' && !ready && !st.confirmed){
+    ready = document.createElement('div');
+    ready.className = 'ready-banner'; ready.id = 'jready-' + id;
+    ready.innerHTML = `<div class="ready-txt"><strong>${esc(t((d.total_videos||0) === 1 ? 'job.ready.one' : 'job.ready', {n:d.total_videos||0}))}</strong><span>${esc(t('job.ready.sub', {m:d.max_concurrent||3}))}</span></div>
+      <button class="btn btn-accent btn-sm" data-act="job-confirm"><svg class="ic"><use href="#i-play"/></svg>${esc(t('job.confirm', {n:d.total_videos||0}))}</button>`;
+    $('#joverall-' + id).before(ready);
+  }
+  if(d.status === 'running' && ready) ready.remove();
+
+  const total = d.total_videos || 0, comp = d.completed_videos || 0, fail = d.failed_videos || 0;
+  const pct = total ? Math.round(comp / total * 100) : 0;
+  const ov = $('#joverall-' + id);
+  if(ov) ov.style.display = total > 0 ? '' : 'none';
+  const bar = $('#jbar-' + id); if(bar) bar.style.width = pct + '%';
+  const stats = $('#jstats-' + id);
+  if(stats) stats.innerHTML = '<span><b>' + comp + '</b> done</span>' + (fail ? '<span style="color:var(--accent)"><b>' + fail + '</b> failed</span>' : '') + '<span>' + pct + '%</span>';
+
+  const slots = $('#jslots-' + id);
+  if(slots){
+    const maxC = d.max_concurrent || 3, active = d.active_slots || 0;
+    if(d.status === 'running' && maxC > 0){
+      slots.style.display = 'flex';
+      slots.innerHTML = Array.from({length:maxC}, (_, i) => '<span class="pip' + (i < active ? ' on' : '') + '"></span>').join('') +
+        '<span class="lbl">' + esc(t('job.slots', {a:active, m:maxC})) + '</span>';
+    } else slots.style.display = 'none';
+  }
+
+  renderVideos(id, d.videos || []);
+
+  const logBox = $('#jlog-' + id);
+  if(logBox && d.log){
+    const cur = logBox.children.length;
+    for(let i = cur; i < d.log.length; i++){
+      const ln = document.createElement('div');
+      ln.className = 'logline'; ln.textContent = d.log[i];
+      logBox.appendChild(ln);
+    }
+    if(st.logOpen) logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  if(d.done && !(d.videos || []).some(v => ['queued','downloading','processing'].includes(v.status))){
+    if(st.es){ st.es.close(); st.es = null; }
+    if(st.timer){ clearInterval(st.timer); st.timer = null; }
+    updateRail(); updateSlotPill();
+    if(curView === 'history') loadStats();
+    loadRecent();
+  }
+  updateRail(); updateSlotPill();
+}
+
+const VIDEO_STATE_LABEL = {queued:'st.queued', downloading:'st.downloading', processing:'st.processing',
+                           done:'st.done', error:'st.error', skipped:'st.skipped'};
+
+function renderVideos(jobId, videos){
+  const grid = $('#jgrid-' + jobId);
+  if(!grid) return;
+  grid.classList.toggle('solo', videos.length === 1);
+  videos.forEach((v, idx) => {
+    const cid = 'vc-' + jobId + '-' + idx;
+    let card = document.getElementById(cid);
+    if(!card){
+      card = document.createElement('div');
+      card.id = cid; card.className = 'vcard';
+      card.dataset.video = v.id;
+      card.innerHTML = `
+        <div class="thumb">
+          ${v.thumbnail ? `<img src="${esc(v.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">` : ''}
+          <div class="ph" ${v.thumbnail ? 'style="display:none"' : ''}>${v.index || idx + 1}</div>
+          <div class="shade"></div>
+          <span class="vstate" id="vst-${jobId}-${idx}">${esc(statusLabel(v.status))}</span>
+          <span class="vspeed" id="vsp-${jobId}-${idx}"></span>
+          <div class="vprog"><i id="vpf-${jobId}-${idx}"></i></div>
+          <div class="vactions">
+            <button class="vact" data-act="video-retry" data-video="${esc(v.id)}" title="${esc(t('act.retry'))}"><svg class="ic"><use href="#i-retry"/></svg></button>
+            <button class="vact" data-act="video-skip" data-video="${esc(v.id)}" title="${esc(t('act.cancel'))}"><svg class="ic"><use href="#i-x"/></svg></button>
+          </div>
+        </div>
+        <div class="vlabel">
+          <div class="vname">${esc(v.title || '')}</div>
+          <div class="vmeta"><span>${v.duration ? fmtDur(v.duration) : ''}</span><span id="vpc-${jobId}-${idx}"></span></div>
+          <div class="verr" id="verr-${jobId}-${idx}" style="display:none"></div>
+        </div>`;
+      grid.appendChild(card);
+    }
+    const st = v.status || 'queued';
+    card.className = 'vcard' + (st === 'downloading' ? ' dl' : st === 'done' ? ' done' : st === 'error' ? ' err' : '');
+    const stEl = $('#vst-' + jobId + '-' + idx);
+    if(stEl){ stEl.className = 'vstate ' + st; stEl.textContent = statusLabel(st); }
+    const pf = $('#vpf-' + jobId + '-' + idx);
+    const pct = Math.min(100, Number(v.percent) || 0);
+    if(pf){
+      pf.className = st === 'done' ? 'ok' : st === 'error' ? 'bad' : st === 'processing' ? 'proc' : '';
+      pf.style.width = (st === 'done' || st === 'error') ? '100%' : pct + '%';
+    }
+    const sp = $('#vsp-' + jobId + '-' + idx);
+    if(sp){
+      if((st === 'downloading' || st === 'processing') && (v.speed || v.eta)){
+        sp.textContent = [v.speed, v.eta].filter(Boolean).join(' · '); sp.classList.add('show');
+      } else sp.classList.remove('show');
+    }
+    const pc = $('#vpc-' + jobId + '-' + idx);
+    if(pc) pc.textContent = (st === 'downloading' || st === 'processing') ? Math.round(pct) + '%' : '';
+    const err = $('#verr-' + jobId + '-' + idx);
+    if(err){ err.style.display = st === 'error' && v.error ? '' : 'none'; err.textContent = st === 'error' ? (v.error || '') : ''; }
+    const retry = card.querySelector('[data-act="video-retry"]');
+    const skip = card.querySelector('[data-act="video-skip"]');
+    if(retry) retry.style.display = (st === 'error' || st === 'skipped') ? '' : 'none';
+    if(skip) skip.style.display = ['queued','downloading','processing'].includes(st) ? '' : 'none';
+  });
+}
+
+/* delegated job actions */
+$('#jobs-area').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-act]');
+  if(!btn) return;
+  const panel = btn.closest('.job');
+  if(!panel) return;
+  const jobId = panel.dataset.job;
+  const act = btn.dataset.act;
+  if(act === 'job-cancel'){
+    try{ await api('/api/cancel/' + jobId, {method:'POST'}); toast(t('toast.cancel')); }catch(err){ toast(err.message, true); }
+  } else if(act === 'job-close'){
+    closeJobPanel(jobId);
+  } else if(act === 'job-log'){
+    const st = jobState.get(jobId); if(!st) return;
+    st.logOpen = !st.logOpen;
+    $('#jlog-' + jobId).classList.toggle('open', st.logOpen);
+    btn.classList.toggle('open', st.logOpen);
+    if(st.logOpen){ const lb = $('#jlog-' + jobId); lb.scrollTop = lb.scrollHeight; }
+  } else if(act === 'job-confirm'){
+    try{
+      await api('/api/confirm/' + jobId, {method:'POST'});
+      const st = jobState.get(jobId); if(st) st.confirmed = true;
+      const ready = $('#jready-' + jobId); if(ready) ready.remove();
+      connectJob(jobId);
+    }catch(err){ toast(err.message, true); }
+  } else if(act === 'job-folder'){
+    openPath({jobId});
+  } else if(act === 'video-retry'){
+    try{
+      const st = jobState.get(jobId);
+      if(st && st.done){ st.done = false; st.status = 'running'; connectJob(jobId); }
+      await api('/api/retry_video/' + jobId + '/' + encodeURIComponent(btn.dataset.video), {method:'POST'});
+      toast(t('toast.retry'));
+    }catch(err){ toast(err.message, true); }
+  } else if(act === 'video-skip'){
+    try{ await api('/api/cancel_video/' + jobId + '/' + encodeURIComponent(btn.dataset.video), {method:'POST'}); }catch(err){}
+  }
+});
+
+function closeJobPanel(jobId){
+  const st = jobState.get(jobId);
+  if(st){ if(st.es) st.es.close(); if(st.timer) clearInterval(st.timer); jobState.delete(jobId); }
+  const panel = $('#jp-' + jobId); if(panel) panel.remove();
+  updateRail(); updateSlotPill();
+}
+
+async function openPath(body){
+  try{ await api('/api/open', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); toast(t('toast.opened')); }
+  catch(err){ toast(t('toast.openfail') + ' ' + err.message, true); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Rail / slots
+   ═══════════════════════════════════════════════════════════════════════════ */
+function updateRail(){
+  const active = Array.from(jobState.entries()).filter(([, st]) => !st.done);
+  const rail = $('#rail-jobs');
+  $('#rail-label').style.display = active.length ? '' : 'none';
+  if(!active.length){ rail.innerHTML = ''; return; }
+  rail.innerHTML = active.map(([id, st]) => {
+    const dot = st.status === 'ready' ? 'ready' : st.status === 'error' ? 'error' : 'live';
+    return `<button class="rail-job" data-rail="${esc(id)}">
+      <div class="rj-title"><span class="dot ${dot}"></span><span>${esc(statusLabel(st.status))}</span></div>
+      <div class="rj-meta">${esc(fmtRelative(Number(id.split('-')[0])))}</div>
+    </button>`;
+  }).join('');
+  rail.querySelectorAll('[data-rail]').forEach(el => el.addEventListener('click', () => {
+    const id = el.dataset.rail;
+    showView('download');
+    setTimeout(() => { const p = $('#jp-' + id); if(p) p.scrollIntoView({behavior:'smooth', block:'center'}); }, 60);
+  }));
+}
+function updateSlotPill(){
+  const active = Array.from(jobState.values()).filter(st => !st.done).length;
+  const pill = $('#slots-pill');
+  if(active){ pill.style.display = ''; $('#slots-txt').textContent = active === 1 ? '1 active' : active + ' active'; }
+  else pill.style.display = 'none';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   History
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function loadHistory(){
+  const list = $('#hist-list');
+  try{
+    const params = new URLSearchParams({q: historyState.q, status: historyState.status, limit: 100});
+    const data = await api('/api/history?' + params);
+    historyState.items = data.items;
+    historyState.total = data.total;
+    renderHistory();
+  }catch(e){
+    list.innerHTML = emptyBlock('i-alert', t('toast.loadfail'), '');
+    toast(t('toast.loadfail'), true);
+  }
+}
+
+function emptyBlock(icon, title, sub){
+  return `<div class="empty"><div class="eicon"><svg class="ic"><use href="#${icon}"/></svg></div>
+    <h3>${esc(title)}</h3>${sub ? '<p>' + esc(sub) + '</p>' : ''}</div>`;
+}
+
+function renderHistory(){
+  const list = $('#hist-list');
+  const items = historyState.items;
+  if(!items.length){
+    const filtered = historyState.q || historyState.status !== 'all';
+    list.innerHTML = filtered
+      ? emptyBlock('i-search', t('hist.noresult'), t('hist.noresult.sub'))
+      : emptyBlock('i-film', t('hist.empty'), t('hist.empty.sub'));
+    return;
+  }
+  list.innerHTML = items.map((j, i) => {
+    const statusClass = j.status === 'done' ? 'done' : j.status === 'error' ? 'error' : j.status === 'cancelled' ? 'cancelled' : 'live';
+    const statusText = statusLabel(j.status);
+    const title = j.title || t('hist.missing');
+    const modeLabel = t('mode.' + (j.mode === 'retry' ? 'single' : (j.mode || 'single')));
+    const bits = [];
+    bits.push(`<span><svg class="ic"><use href="#i-film"/></svg>${esc(modeLabel)}</span>`);
+    if(j.quality) bits.push(`<span>${esc(j.quality)}</span>`);
+    if(j.total_videos) bits.push(`<span>${esc(j.total_videos === 1 ? t('hist.video.one') : t('hist.videos', {n:j.total_videos}))}</span>`);
+    if(j.size_bytes) bits.push(`<span>${esc(fmtBytes(j.size_bytes))}</span>`);
+    if(j.duration) bits.push(`<span>${esc(fmtDur(j.duration))}</span>`);
+    bits.push(`<span>${esc(fmtDate(j.ts))}</span>`);
+    const thumb = j.thumbnail
+      ? `<img src="${esc(j.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="ph" style="display:none"><svg class="ic"><use href="#i-film"/></svg></div>`
+      : `<div class="ph"><svg class="ic"><use href="#i-film"/></svg></div>`;
+    const actions = `
+      <button class="btn btn-ghost" data-act="relaunch" title="${esc(t('act.relaunch'))}"><svg class="ic"><use href="#i-retry"/></svg><span>${esc(t('act.relaunch'))}</span></button>
+      ${j.failed_videos ? `<button class="btn btn-quiet" data-act="retryfailed"><svg class="ic"><use href="#i-alert"/></svg><span>${esc(t('act.retryfailed'))}</span></button>` : ''}
+      ${j.out_dir ? `<button class="btn btn-quiet" data-act="openfolder" title="${esc(t('act.openfolder'))}"><svg class="ic"><use href="#i-folder"/></svg></button>` : ''}
+      <button class="btn btn-quiet" data-act="details" title="${esc(t('act.details'))}"><svg class="ic"><use href="#i-chevron"/></svg></button>
+      <button class="btn btn-quiet" data-act="delete" title="${esc(t('act.delete'))}"><svg class="ic"><use href="#i-trash"/></svg></button>`;
+    return `<article class="hist" style="--i:${i}" data-job="${esc(j.id)}">
+      <div class="hist-thumb">${thumb}<span class="stamp">${esc(statusText)}</span></div>
+      <div class="hist-main">
+        <div class="hist-title" title="${esc(title)}">${esc(title)}</div>
+        <div class="hist-meta">${bits.join('')}</div>
+        <div class="hist-url" title="${esc(j.url || '')}">${esc(j.url || '')}</div>
+        <div class="hist-counts">
+          ${j.completed_videos ? `<span class="ok">✓ ${j.completed_videos} done</span>` : ''}
+          ${j.failed_videos ? `<span class="bad">✕ ${j.failed_videos} failed</span>` : ''}
+          ${j.error ? `<span class="bad">${esc(String(j.error).slice(0, 80))}</span>` : ''}
+        </div>
+      </div>
+      <div class="hist-actions">${actions}</div>
+      <div class="hist-detail" data-detail="${esc(j.id)}"></div>
+    </article>`;
+  }).join('');
+}
+
+$('#hist-list').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-act]');
+  const card = e.target.closest('[data-job]');
+  if(!card) return;
+  const jobId = card.dataset.job;
+  const item = historyState.items.find(x => x.id === jobId);
+  if(!btn){
+    return;
+  }
+  const act = btn.dataset.act;
+  if(act === 'relaunch'){
+    try{
+      const d = await api('/api/history/' + encodeURIComponent(jobId) + '/relaunch', {method:'POST'});
+      createJobPanel({id: d.jobId, ts: Date.now(), status: 'queued', mode: item?.mode || 'single', title: '', videos: [], total_videos: 0});
+      showView('download');
+      toast(t('toast.relaunch'));
+    }catch(err){ toast(err.message, true); }
+  } else if(act === 'retryfailed'){
+    try{
+      const d = await api('/api/history/' + encodeURIComponent(jobId) + '/retry', {method:'POST'});
+      createJobPanel({id: d.jobId, ts: Date.now(), status: 'running', mode: 'retry', title: '', videos: [], total_videos: 0});
+      showView('download');
+      toast(t('toast.retry'));
+    }catch(err){ toast(err.message, true); }
+  } else if(act === 'openfolder'){
+    openPath({jobId});
+  } else if(act === 'delete'){
+    const ok = await confirmDialog(t('confirm.delete.title'), t('confirm.delete.body'), t('confirm.delete.ok'));
+    if(!ok) return;
+    try{
+      await api('/api/history/' + encodeURIComponent(jobId), {method:'DELETE'});
+      historyState.items = historyState.items.filter(x => x.id !== jobId);
+      renderHistory(); loadStats();
+      toast(t('toast.deleted'));
+    }catch(err){ toast(err.message, true); }
+  } else if(act === 'details'){
+    const box = card.querySelector('.hist-detail');
+    const open = box.classList.toggle('open');
+    if(open) await renderDetail(jobId, box);
+  } else if(act === 'openfile'){
+    openPath({jobId, videoId: btn.dataset.video});
+  }
+});
+
+async function renderDetail(jobId, box){
+  if(detailCache.has(jobId)){ box.innerHTML = detailCache.get(jobId); return; }
+  box.innerHTML = '<div class="faint" style="font-size:11px;padding:6px 2px">…</div>';
+  try{
+    const d = await api('/api/history/' + encodeURIComponent(jobId));
+    const rows = (d.videos || []).map(v => `
+      <div class="drow">
+        ${v.thumbnail ? `<img class="dthumb" src="${esc(v.thumbnail)}" alt="" loading="lazy">` : `<div class="dthumb"></div>`}
+        <div class="dinfo"><div class="dtitle" title="${esc(v.title || '')}">${esc(v.title || '')}</div>
+          <div class="dmeta">${esc(v.status || '')}${v.filesize ? ' · ' + esc(fmtBytes(v.filesize)) : ''}${v.error ? ' · ' + esc(String(v.error).slice(0, 60)) : ''}</div></div>
+        <button class="dopen" data-act="openfile" data-video="${esc(v.video_id)}" ${v.filepath ? '' : 'disabled'} title="${esc(t('act.openfile'))}"><svg class="ic"><use href="#i-arrow"/></svg></button>
+      </div>`).join('');
+    const html = rows ? '<div class="detail-grid">' + rows + '</div>' : '<div class="faint" style="font-size:11px">No item details.</div>';
+    detailCache.set(jobId, html);
+    box.innerHTML = html;
+  }catch(err){
+    box.innerHTML = '<div class="faint" style="font-size:11px">' + esc(err.message) + '</div>';
+  }
+}
+
+/* search + filters */
+$('#hist-search').addEventListener('input', e => {
+  historyState.q = e.target.value.trim();
+  clearTimeout(histTimer);
+  histTimer = setTimeout(loadHistory, 280);
+});
+$('#hist-filters').addEventListener('click', e => {
+  const b = e.target.closest('[data-status]');
+  if(!b) return;
+  historyState.status = b.dataset.status;
+  $$('#hist-filters .filt').forEach(x => x.classList.toggle('active', x === b));
+  loadHistory();
+});
+
+async function clearHistory(){
+  const ok = await confirmDialog(t('confirm.clear.title'), t('confirm.clear.body'), t('confirm.clear.ok'));
+  if(!ok) return;
+  try{
+    await api('/api/history?status=' + encodeURIComponent(historyState.status), {method:'DELETE'});
+    detailCache.clear();
+    await loadHistory();
+    loadStats(); loadRecent();
+    toast(t('toast.cleared'));
+  }catch(err){ toast(err.message, true); }
+}
+
+/* stats */
+async function loadStats(){
+  try{
+    const s = await api('/api/stats');
+    allStats = s;
+    $('#hero-count').textContent = s.total_videos;
+    $('#stat-videos').textContent = s.total_videos;
+    $('#stat-videos-sub').textContent = t('stat.videos.sub', {n:s.total_jobs});
+    const totalAttempted = s.done + s.failed;
+    $('#stat-success').textContent = totalAttempted ? Math.round(s.done / totalAttempted * 100) + '%' : '—';
+    $('#stat-disk').textContent = fmtBytes(s.total_bytes);
+    $('#stat-disk-sub').textContent = t('stat.disk.sub');
+    if(s.disk.total) $('#stat-disk').title = fmtBytes(s.disk.free) + ' free';
+    const max = Math.max(1, ...s.activity.map(a => a.count));
+    $('#stat-activity').innerHTML = s.activity.map(a => {
+      const h = Math.max(2, Math.round(a.count / max * 26));
+      return `<i class="${a.count ? 'hot' : ''}" style="height:${h}px" title="${esc(a.date)} · ${a.count}"></i>`;
+    }).join('');
+    const sum = s.activity.reduce((n, a) => n + a.count, 0);
+    $('#stat-activity-sub').textContent = sum + ' videos';
+    const arc = $('#hero-arc');
+    if(arc){
+      const pct = Math.min(1, s.total_videos / 50);
+      arc.style.strokeDasharray = (pct * 207) + ' 999';
+    }
+  }catch(e){}
+}
+
+/* recent captures on the download page */
+async function loadRecent(){
+  try{
+    const d = await api('/api/history?limit=3');
+    const wrap = $('#recent-wrap'), grid = $('#recent-grid');
+    if(!d.items.length){ wrap.classList.remove('show'); return; }
+    grid.innerHTML = d.items.map(j => {
+      const thumb = j.thumbnail
+        ? `<img src="${esc(j.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="ph" style="display:none"><svg class="ic"><use href="#i-film"/></svg></div>`
+        : `<div class="ph"><svg class="ic"><use href="#i-film"/></svg></div>`;
+      return `<button class="rcard" data-recent="${esc(j.id)}">
+        <div class="rimg">${thumb}</div>
+        <div class="rbody"><div class="rtitle">${esc(j.title || t('hist.missing'))}</div>
+        <div class="rmeta">${esc(statusLabel(j.status))} · ${esc(fmtRelative(j.ts))}</div></div>
+      </button>`;
+    }).join('');
+    grid.querySelectorAll('[data-recent]').forEach(el => el.addEventListener('click', () => showView('history')));
+    wrap.classList.add('show');
+  }catch(e){}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Settings
+   ═══════════════════════════════════════════════════════════════════════════ */
+function concSlider(v){
+  $('#s-conc-val').textContent = v;
+  $('#s-conc').value = v;
+}
+function toggleSwitch(el){
+  el.classList.toggle('on');
+  el.setAttribute('aria-checked', el.classList.contains('on') ? 'true' : 'false');
+}
+function applySettingsToUI(s){
+  $('#s-dir').value = s.download_dir || '';
+  concSlider(s.max_concurrent || 3);
+  $('#s-quality').value = s.default_quality || 'best';
+  defaultQuality = s.default_quality || 'best';
+  setQuality(defaultQuality);
+  $('#s-timeout').value = s.socket_timeout || 30;
+  $('#s-speed').value = s.speed_limit_mbps || 0;
+  $('#s-cookies').value = s.cookies_browser || '';
+  $('#s-subs').value = s.subtitles_lang || '';
+  const sb = $('#s-sb');
+  sb.classList.toggle('on', !!s.sponsorblock);
+  sb.setAttribute('aria-checked', s.sponsorblock ? 'true' : 'false');
+  $('#s-sleep').value = s.sleep_interval ?? 1;
+  $('#s-maxsleep').value = s.max_sleep_interval ?? 3;
+  const ret = Number(s.history_retention_days ?? 90);
+  $('#s-retention').value = ret === 0 ? '0' : (ret >= 365 ? '365' : '90');
+  if(![...$('#s-retention').options].some(o => o.value === String(ret))) $('#s-retention').value = '90';
+  const langSel = $('#s-lang'); langSel.value = lang;
+  $('#s-theme').value = document.documentElement.dataset.theme || 'dark';
+}
+async function loadSettings(){
+  try{
+    const s = await api('/api/settings');
+    applySettingsToUI(s);
+  }catch(e){ toast(t('toast.loadfail'), true); }
+}
+async function saveSettings(){
+  const p = {
+    download_dir: $('#s-dir').value.trim(),
+    max_concurrent: +$('#s-conc').value,
+    default_quality: $('#s-quality').value,
+    socket_timeout: +$('#s-timeout').value,
+    speed_limit_mbps: +$('#s-speed').value || 0,
+    cookies_browser: $('#s-cookies').value,
+    subtitles_lang: $('#s-subs').value,
+    sponsorblock: $('#s-sb').classList.contains('on'),
+    sleep_interval: +$('#s-sleep').value,
+    max_sleep_interval: +$('#s-maxsleep').value,
+    history_retention_days: +$('#s-retention').value,
+  };
+  try{
+    const saved = await api('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(p)});
+    applySettingsToUI(saved);
+    const note = $('#save-note');
+    note.classList.add('show'); clearTimeout(note._t); note._t = setTimeout(() => note.classList.remove('show'), 2400);
+    toast(t('toast.saved'));
+    loadStats();
+  }catch(e){ toast(t('toast.setfail'), true); }
+}
+async function resetSettings(){
+  try{
+    const s = await api('/api/settings/reset', {method:'POST'});
+    applySettingsToUI(s);
+    toast(t('toast.reset'));
+  }catch(e){ toast(t('toast.setfail'), true); }
+}
+$('#s-lang').addEventListener('change', e => { setLang(e.target.value); });
+$('#s-theme').addEventListener('change', e => { setTheme(e.target.value); });
+function openDownloadDir(){ openPath({path: $('#s-dir').value.trim()}); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Modal confirm
+   ═══════════════════════════════════════════════════════════════════════════ */
+let modalResolve = null;
+function confirmDialog(title, body, okLabel){
+  $('#modal-title').textContent = title;
+  $('#modal-body').textContent = body;
+  $('#modal-ok').textContent = okLabel || t('act.confirm');
+  $('#modal-cancel').textContent = t('act.cancel');
+  $('#modal').classList.add('open');
+  return new Promise(resolve => { modalResolve = resolve; });
+}
+function closeModal(v){
+  $('#modal').classList.remove('open');
+  if(modalResolve){ modalResolve(v); modalResolve = null; }
+}
+$('#modal-cancel').addEventListener('click', () => closeModal(false));
+$('#modal-ok').addEventListener('click', () => closeModal(true));
+$('#modal').addEventListener('click', e => { if(e.target === $('#modal')) closeModal(false); });
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') closeModal(false);
+  if(e.key === '/' && document.activeElement?.tagName !== 'INPUT' && curView === 'history'){
+    e.preventDefault(); $('#hist-search').focus();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Version banner
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function checkVersion(){
+  try{
+    const v = await api('/api/version');
+    $('#version-txt').textContent = 'yt-dlp ' + v.installed;
+    $('#rail-version').textContent = 'yt-dlp ' + v.installed;
+    if(v.latest === null){ setTimeout(checkVersion, 5000); return; }
+    const pill = $('#version-pill');
+    if(v.stale){
+      pill.classList.add('alert');
+      pill.querySelector('.dot').className = 'dot ready';
+      if(localStorage.getItem('ytd-update-banner') !== v.latest){
+        $('#update-text').innerHTML = 'yt-dlp <b>' + esc(v.installed) + '</b> is behind the latest <b>' + esc(v.latest) +
+          '</b> — run <code>pip install -U yt-dlp</code> and restart.';
+        $('#update-banner').classList.add('show');
+      }
+    } else {
+      pill.querySelector('.dot').className = 'dot done';
+    }
+  }catch(e){ setTimeout(checkVersion, 8000); }
+}
+function dismissUpdate(){
+  $('#update-banner').classList.remove('show');
+  const txt = $('#version-txt').textContent.replace('yt-dlp ', '');
+  localStorage.setItem('ytd-update-banner', txt || '1');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Boot
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function restoreActiveJobs(){
+  try{
+    const list = await api('/api/active');
+    list.sort((a, b) => a.ts - b.ts);
+    list.forEach(j => createJobPanel(j));
+  }catch(e){}
+}
+
+setTheme(localStorage.getItem('ytd-theme') || 'dark', false);
+const qp = new URLSearchParams(location.search);
+if(qp.get('lang') && I18N[qp.get('lang')]) lang = qp.get('lang');
+if(qp.get('theme') === 'light' || qp.get('theme') === 'dark') setTheme(qp.get('theme'), false);
+applyLang();
+const bootView = (location.hash || '').replace('#', '');
+if(['download','history','settings'].includes(bootView)) showView(bootView);
+window.addEventListener('hashchange', () => {
+  const v = (location.hash || '').replace('#', '');
+  if(['download','history','settings'].includes(v) && v !== curView) showView(v);
+});
+loadSettings();
+loadStats();
+loadRecent();
+checkVersion();
+restoreActiveJobs();
+setInterval(() => { if(curView === 'history') loadStats(); }, 30000);
+</script>
+</body>
+</html>

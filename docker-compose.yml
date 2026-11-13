@@ -1,0 +1,13 @@
+services:
+  ytdpro:
+    build: .
+    container_name: ytdpro
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./downloads:/downloads
+      - ytdpro-data:/data
+    restart: unless-stopped
+
+volumes:
+  ytdpro-data:

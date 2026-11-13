@@ -1645,8 +1645,8 @@ function renderHistory(){
       ? `<img src="${esc(j.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="ph" style="display:none"><svg class="ic"><use href="#i-film"/></svg></div>`
       : `<div class="ph"><svg class="ic"><use href="#i-film"/></svg></div>`;
     const actions = `
-      <button class="btn btn-ghost" data-act="relaunch" title="${esc(t('act.relaunch'))}"><svg class="ic"><use href="#i-retry"/></svg><span>${esc(t('act.relaunch'))}</span></button>
-      ${j.failed_videos ? `<button class="btn btn-quiet" data-act="retryfailed"><svg class="ic"><use href="#i-alert"/></svg><span>${esc(t('act.retryfailed'))}</span></button>` : ''}
+      ${j.url ? `<button class="btn btn-ghost" data-act="relaunch" title="${esc(t('act.relaunch'))}"><svg class="ic"><use href="#i-retry"/></svg><span>${esc(t('act.relaunch'))}</span></button>` : ''}
+      ${(j.failed_videos && j.preview.length) ? `<button class="btn btn-quiet" data-act="retryfailed"><svg class="ic"><use href="#i-alert"/></svg><span>${esc(t('act.retryfailed'))}</span></button>` : ''}
       ${j.out_dir ? `<button class="btn btn-quiet" data-act="openfolder" title="${esc(t('act.openfolder'))}"><svg class="ic"><use href="#i-folder"/></svg></button>` : ''}
       <button class="btn btn-quiet" data-act="details" title="${esc(t('act.details'))}"><svg class="ic"><use href="#i-chevron"/></svg></button>
       <button class="btn btn-quiet" data-act="delete" title="${esc(t('act.delete'))}"><svg class="ic"><use href="#i-trash"/></svg></button>`;
@@ -1655,7 +1655,7 @@ function renderHistory(){
       <div class="hist-main">
         <div class="hist-title" title="${esc(title)}">${esc(title)}</div>
         <div class="hist-meta">${bits.join('')}</div>
-        <div class="hist-url" title="${esc(j.url || '')}">${esc(j.url || '')}</div>
+        ${j.url ? `<div class="hist-url" title="${esc(j.url)}">${esc(j.url)}</div>` : ''}
         <div class="hist-counts">
           ${j.completed_videos ? `<span class="ok">✓ ${j.completed_videos} done</span>` : ''}
           ${j.failed_videos ? `<span class="bad">✕ ${j.failed_videos} failed</span>` : ''}

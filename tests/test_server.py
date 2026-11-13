@@ -231,3 +231,9 @@ def test_retention_zero_keeps_everything(server):
 def test_version_endpoint_shape(server):
     d = client(server).get("/api/version").get_json()
     assert set(d) == {"installed", "latest", "stale"}
+
+
+def test_playlist_outtmpl_uses_video_index(server):
+    tpl = "/x/%(playlist_index)02d - %(title)s.%(ext)s"
+    assert server._video_outtmpl(tpl, 7) == "/x/07 - %(title)s.%(ext)s"
+    assert server._video_outtmpl("%(title)s.%(ext)s", 3) == "%(title)s.%(ext)s"

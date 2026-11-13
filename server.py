@@ -194,6 +194,8 @@ def _db():
                         if col not in existing:
                             db.execute(f"ALTER TABLE jobs ADD COLUMN {col} {typ}")
                     db.execute("CREATE INDEX IF NOT EXISTS idx_jobs_ts ON jobs(ts DESC)")
+                    db.execute("PRAGMA journal_mode=WAL")
+                    db.execute("PRAGMA synchronous=NORMAL")
                 _db_ready = True
     conn = sqlite3.connect(JOBS_DB, timeout=15)
     conn.row_factory = sqlite3.Row
@@ -564,6 +566,14 @@ def _release_slot(job_id: str):
 
 
 # ── Download one video ────────────────────────────────────────────────────────
+def _video_outtmpl(template: str, index) -> str:
+    """Replace the playlist-index placeholder for a single video download."""
+    try:
+        return template.replace("%(playlist_index)02d", f"{int(index or 1):02d}")
+    except Exception:
+        return template
+
+
 def _resolve_output(path, ext: str):
     if not path:
         return None
@@ -604,6 +614,8 @@ def download_one(job_id: str, video: dict, base_opts: dict, ext: str = "mp4") ->
 
     opts = {**base_opts, "noplaylist": True,
             "progress_hooks": [make_video_hook(job_id, vid_id)]}
+    if "%(playlist_index)" in str(opts.get("outtmpl", "")):
+        opts["outtmpl"] = _video_outtmpl(opts["outtmpl"], video.get("index"))
 
     try:
         with jobs_lock:
@@ -681,7 +693,7 @@ def _base_opts(cfg: dict, quality: str, out: Path, mode: str,
 
     opts = dict(
         format=fmt, merge_output_format=ext,
-        add_metadata=True, no_warnings=True, quiet=True,
+        add_metadata=True, no_warnings=True, quiet=True, noprogress=True,
         socket_timeout=int(cfg.get("socket_timeout", 30)),
         concurrent_fragment_downloads=4,
         concurrent_fragments=4,

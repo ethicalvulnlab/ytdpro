@@ -110,6 +110,7 @@ def _seed(server, job_id="j-hist", status="done", url="https://example.com/v"):
         "total_videos": 2, "completed_videos": 1, "failed_videos": 1, "error": None,
         "url": url, "title": "A test capture", "quality": "1080p", "section": "videos",
         "date_after": "", "date_before": "", "out_dir": "/tmp/ytdpro-test",
+        "subtitles": "en",
     })
     server._upsert_videos(job_id, [
         {"id": "v1", "index": 1, "title": "First", "url": url, "thumbnail": "http://img/1.jpg",
@@ -184,13 +185,14 @@ def test_relaunch_reuses_stored_settings(server, monkeypatch):
     calls = {}
     monkeypatch.setattr(server, "_is_public_url", lambda u: (True, ""))
     monkeypatch.setattr(server, "_spawn_job",
-                        lambda url, mode, quality, section, a="", b="": calls.update(
-                            url=url, mode=mode, quality=quality, section=section) or "new-job")
+                        lambda url, mode, quality, section, a="", b="", subtitles="": calls.update(
+                            url=url, mode=mode, quality=quality, section=section,
+                            subtitles=subtitles) or "new-job")
     c = client(server)
     r = c.post("/api/history/j-hist/relaunch")
     assert r.status_code == 200 and r.get_json()["jobId"] == "new-job"
     assert calls == {"url": "https://example.com/v", "mode": "single",
-                     "quality": "1080p", "section": "videos"}
+                     "quality": "1080p", "section": "videos", "subtitles": "en"}
 
 
 def test_retry_failed_creates_job(server, monkeypatch, tmp_path):
@@ -258,3 +260,35 @@ def test_merge_retry_results_updates_original(server):
     assert d["status"] == "done" and d["videos"][1]["status"] == "done"
     assert d["videos"][1]["filesize"] == 2000
     assert client(server).get("/api/history").get_json()["total"] == 1
+
+
+def test_normalize_subs(server):
+    assert server.normalize_subs("") == ""
+    assert server.normalize_subs("all") == "all"
+    assert server.normalize_subs("en, fr,EN") == "en,fr"
+    with pytest.raises(ValueError):
+        server.normalize_subs("en;rm")
+
+
+def test_base_opts_subtitles(server):
+    opts, _ = server._base_opts(server.get_cfg(), "best", Path("/tmp/x"), "single",
+                                subs="fr,en")
+    assert opts["writesubtitles"] is True
+    assert opts["writeautomaticsub"] is True
+    assert opts["subtitleslangs"] == ["fr", "en"]
+    assert opts["subtitlesformat"] == "vtt/srt/best"
+    opts2, _ = server._base_opts(server.get_cfg(), "best", Path("/tmp/x"), "single", subs="")
+    assert "writesubtitles" not in opts2
+
+
+def test_start_passes_subtitles(server, monkeypatch):
+    monkeypatch.setattr(server, "_is_public_url", lambda u: (True, ""))
+    captured = {}
+    monkeypatch.setattr(server, "_spawn_job",
+                        lambda url, mode, quality, section, a="", b="", subtitles="": captured.update(
+                            subtitles=subtitles) or "jid")
+    c = client(server)
+    r = c.post("/api/start", json={"url": "https://example.com/v", "subtitles": "fr, en"})
+    assert r.status_code == 200 and captured["subtitles"] == "fr,en"
+    r = c.post("/api/start", json={"url": "https://example.com/v", "subtitles": "en;rm"})
+    assert r.status_code == 400

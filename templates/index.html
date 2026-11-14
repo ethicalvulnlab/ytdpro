@@ -228,6 +228,7 @@ a{color:inherit;text-decoration:none;}
 .qchip{padding:7px 12px;border-radius:8px;border:1px solid var(--line);font-size:11.5px;font-weight:600;color:var(--ink-2);transition:.15s;font-family:var(--font-mono);letter-spacing:.2px;}
 .qchip:hover{border-color:var(--line-2);color:var(--ink);}
 .qchip.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.sub-hint{font-family:var(--font-mono);font-size:9px;color:var(--ink-3);margin-top:4px;max-width:230px;line-height:1.5;}
 .channel-opts{display:none;gap:14px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px dashed var(--line);}
 .channel-opts.show{display:flex;animation:view-in .3s both;}
 .inp{height:38px;padding:0 11px;border-radius:9px;border:1px solid var(--line-2);background:var(--sunk);color:var(--ink);font-size:12.5px;outline:none;transition:.15s;}
@@ -647,6 +648,31 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
                   <button class="qchip" data-quality="audio" data-i18n="q.audio">Audio</button>
                 </div>
               </div>
+              <div class="field">
+                <label data-i18n="subs.label">Subtitles</label>
+                <select class="inp" id="subs-sel" onchange="onSubsChange()" style="min-width:158px">
+                  <option value="" data-i18n="subs.none">None</option>
+                  <option value="en">English</option>
+                  <option value="fr">Français</option>
+                  <option value="ar">العربية</option>
+                  <option value="es">Español</option>
+                  <option value="de">Deutsch</option>
+                  <option value="tr">Türkçe</option>
+                  <option value="pt">Português</option>
+                  <option value="ru">Русский</option>
+                  <option value="hi">हिन्दी</option>
+                  <option value="zh">中文</option>
+                  <option value="ja">日本語</option>
+                  <option value="ko">한국어</option>
+                  <option value="all" data-i18n="subs.all">All languages</option>
+                  <option value="custom" data-i18n="subs.custom">Custom…</option>
+                </select>
+                <div class="sub-hint" id="subs-hint"></div>
+              </div>
+              <div class="field" id="subs-custom-wrap" style="display:none">
+                <label data-i18n="subs.codes">Language codes</label>
+                <input class="inp" id="subs-custom" placeholder="en,fr,ar" style="width:150px">
+              </div>
             </div>
 
             <div class="channel-opts" id="ch-opts">
@@ -765,6 +791,17 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
                   <select class="inp" id="s-subs">
                     <option value="" data-i18n="subs.none">None</option>
                     <option value="en" data-i18n="subs.en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="ar">العربية</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                    <option value="tr">Türkçe</option>
+                    <option value="pt">Português</option>
+                    <option value="ru">Русский</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
                     <option value="all" data-i18n="subs.all">All languages</option>
                   </select>
                 </div>
@@ -896,6 +933,8 @@ en: {
   'act.openfolder':'Open folder','act.retryfailed':'Retry failed','act.openfile':'Open file',
   'act.cancel':'Cancel','act.close':'Close','act.confirm':'Confirm','act.gotit':'Got it',
   'lb.quality':'Quality','lb.section':'Section','lb.after':'Published after','lb.before':'Published before',
+  'subs.label':'Subtitles','subs.all':'All languages','subs.custom':'Custom…','subs.codes':'Language codes',
+  'subs.available':'Available: {langs}','subs.auto':'Auto captions: {langs}','subs.tip':'Writes .vtt files next to the video.',
   'q.best':'Best','q.audio':'Audio','q.audio.mp3':'Audio only (mp3)',
   'sec.videos':'Videos','sec.shorts':'Shorts','sec.streams':'Streams','sec.all':'Everything',
   'hint.start':'to start · drop a link anywhere',
@@ -966,6 +1005,8 @@ fr: {
   'act.openfolder':'Dossier','act.retryfailed':'Réessayer les échecs','act.openfile':'Ouvrir le fichier',
   'act.cancel':'Annuler','act.close':'Fermer','act.confirm':'Confirmer','act.gotit':'Compris',
   'lb.quality':'Qualité','lb.section':'Section','lb.after':'Publié après','lb.before':'Publié avant',
+  'subs.label':'Sous-titres','subs.all':'Toutes les langues','subs.custom':'Personnalisé…','subs.codes':'Codes de langue',
+  'subs.available':'Disponibles : {langs}','subs.auto':'Sous-titres auto : {langs}','subs.tip':'Crée des fichiers .vtt à côté de la vidéo.',
   'q.best':'Meilleure','q.audio':'Audio','q.audio.mp3':'Audio seul (mp3)',
   'sec.videos':'Vidéos','sec.shorts':'Shorts','sec.streams':'Directs','sec.all':'Tout',
   'hint.start':'pour lancer · déposez un lien n\u2019importe où',
@@ -1036,6 +1077,8 @@ ar: {
   'act.openfolder':'المجلد','act.retryfailed':'إعادة الفاشلة','act.openfile':'فتح الملف',
   'act.cancel':'إلغاء','act.close':'إغلاق','act.confirm':'تأكيد','act.gotit':'حسنًا',
   'lb.quality':'الجودة','lb.section':'القسم','lb.after':'نُشر بعد','lb.before':'نُشر قبل',
+  'subs.label':'الترجمات','subs.all':'كل اللغات','subs.custom':'مخصص…','subs.codes':'رموز اللغة',
+  'subs.available':'المتاح: {langs}','subs.auto':'ترجمات تلقائية: {langs}','subs.tip':'ينشئ ملفات .vtt بجانب الفيديو.',
   'q.best':'الأفضل','q.audio':'صوت','q.audio.mp3':'صوت فقط (mp3)',
   'sec.videos':'الفيديوهات','sec.shorts':'المقاطع','sec.streams':'البث','sec.all':'الكل',
   'hint.start':'للبدء · أفلت رابطًا في أي مكان',
@@ -1218,6 +1261,16 @@ function currentQuality(){
 function setQuality(q){
   $$('.qchip').forEach(c => c.classList.toggle('active', c.dataset.quality === q));
 }
+function onSubsChange(){
+  const v = $('#subs-sel').value;
+  const wrap = $('#subs-custom-wrap');
+  wrap.style.display = v === 'custom' ? '' : 'none';
+  if(v === 'custom') $('#subs-custom').focus();
+}
+function getSubs(){
+  const v = $('#subs-sel').value;
+  return v === 'custom' ? $('#subs-custom').value.trim() : v;
+}
 
 let previewTimer = null;
 function onUrlInput(){
@@ -1250,6 +1303,11 @@ async function fetchPreview(){
       img.onerror = () => { img.style.display = 'none'; };
       w.replaceChildren(img);
     }
+    const hint = $('#subs-hint');
+    const manual = d.subtitle_manual || [], auto = d.subtitle_auto || [];
+    if(manual.length) hint.textContent = t('subs.available', {langs: manual.slice(0, 8).join(', ')});
+    else if(auto.length) hint.textContent = t('subs.auto', {langs: auto.slice(0, 8).join(', ')});
+    else hint.textContent = '';
     if(d.is_playlist && uiMode === 'single') setMode('playlist');
   }catch(e){ toast(t('toast.preview'), true); }
   btn.disabled = false;
@@ -1275,7 +1333,8 @@ async function startDownload(){
         url, mode: uiMode, quality: currentQuality(),
         dateAfter: $('#date-after').value || '',
         dateBefore: $('#date-before').value || '',
-        section: $('#section-sel').value
+        section: $('#section-sel').value,
+        subtitles: getSubs()
       })});
     createJobPanel({id: d.jobId, ts: Date.now(), status: 'queued', mode: uiMode, title: '', videos: [],
                     total_videos: 0, completed_videos: 0, failed_videos: 0, scan_count: 0});
@@ -1637,6 +1696,7 @@ function renderHistory(){
     const bits = [];
     bits.push(`<span><svg class="ic"><use href="#i-film"/></svg>${esc(modeLabel)}</span>`);
     if(j.quality) bits.push(`<span>${esc(j.quality)}</span>`);
+    if(j.subtitles) bits.push(`<span>CC ${esc(j.subtitles)}</span>`);
     if(j.total_videos) bits.push(`<span>${esc(j.total_videos === 1 ? t('hist.video.one') : t('hist.videos', {n:j.total_videos}))}</span>`);
     if(j.size_bytes) bits.push(`<span>${esc(fmtBytes(j.size_bytes))}</span>`);
     if(j.duration) bits.push(`<span>${esc(fmtDur(j.duration))}</span>`);

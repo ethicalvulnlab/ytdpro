@@ -44,7 +44,8 @@ everything to a folder you choose. The browser is just the remote control.
 - **Cancellation** for a whole job or a single video
 - **Retry** one failed video without restarting the job
 - **Cookies from your browser** for private / age-restricted videos
-- **Subtitles** (one language or all) and **SponsorBlock** segment removal
+- **Subtitles per download** — pick a language, several codes, or all; written as `.vtt` next to the video
+- **SponsorBlock** segment removal
 - Adaptive concurrency, speed limit, socket timeout, polite request delays
 - Disk-space check and clear, human-readable errors
 
@@ -144,7 +145,10 @@ docker run -d --name ytdpro -p 8080:8080 \
 2. Pick **Single**, **Playlist** or **Channel**.
 3. Choose a quality preset — or **Audio** for an MP3.
 4. For channels, pick a section and optional publish dates.
-5. Hit **Start download**.
+5. Optionally choose **Subtitles** — a common language, *All languages*, or
+   **Custom…** with codes like `en,fr,ar`. The preview shows what the video
+   actually offers.
+6. Hit **Start download**.
 
 Playlists and channels are scanned first: you see how many videos were found,
 then confirm before anything downloads. Single videos start immediately.

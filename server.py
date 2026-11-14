@@ -94,6 +94,31 @@ MODE_LABELS = {"single": "Single video", "playlist": "Playlist",
                "channel": "Channel", "retry": "Retry"}
 
 
+_SUBS_CODE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+
+
+def normalize_subs(value) -> str:
+    """Normalize a subtitle selection: '', 'all', or 'en,fr,ar'."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    if text.lower() == "all":
+        return "all"
+    codes, seen = [], set()
+    for part in re.split(r"[,\s]+", text):
+        if not part:
+            continue
+        if len(part) > 24 or not _SUBS_CODE_RE.match(part):
+            raise ValueError(f"Invalid subtitle language code: {part}")
+        low = part.lower()
+        if low not in seen:
+            seen.add(low)
+            codes.append(low)
+    return ",".join(codes)
+
+
 def sanitize(name: str) -> str:
     return re.sub(r'[/:*?"<>|\\]+', '', str(name or '')).strip() or "untitled"
 
@@ -182,6 +207,7 @@ _JOB_COLUMNS = {
     "date_after": "TEXT",
     "date_before": "TEXT",
     "out_dir": "TEXT",
+    "subtitles": "TEXT",
 }
 
 
@@ -257,21 +283,21 @@ def _upsert_job(job: dict):
             "url": job.get("url"), "title": job.get("title"),
             "quality": job.get("quality"), "section": job.get("section"),
             "date_after": job.get("date_after"), "date_before": job.get("date_before"),
-            "out_dir": job.get("out_dir"),
+            "out_dir": job.get("out_dir"), "subtitles": job.get("subtitles"),
         }
         with _db() as db:
             db.execute("""INSERT INTO jobs
                 (job_id, ts, status, mode, total, completed, failed, error, updated_ts,
-                 url, title, quality, section, date_after, date_before, out_dir)
+                 url, title, quality, section, date_after, date_before, out_dir, subtitles)
                 VALUES (:job_id,:ts,:status,:mode,:total,:completed,:failed,:error,:updated_ts,
-                        :url,:title,:quality,:section,:date_after,:date_before,:out_dir)
+                        :url,:title,:quality,:section,:date_after,:date_before,:out_dir,:subtitles)
                 ON CONFLICT(job_id) DO UPDATE SET
                   status=excluded.status, mode=excluded.mode, total=excluded.total,
                   completed=excluded.completed, failed=excluded.failed, error=excluded.error,
                   updated_ts=excluded.updated_ts, url=excluded.url, title=excluded.title,
                   quality=excluded.quality, section=excluded.section,
                   date_after=excluded.date_after, date_before=excluded.date_before,
-                  out_dir=excluded.out_dir""", row)
+                  out_dir=excluded.out_dir, subtitles=excluded.subtitles""", row)
     except Exception as exc:
         log.debug("job upsert failed: %s", exc)
 
@@ -404,7 +430,8 @@ def _history_query(q: str = "", status: str = "", mode: str = "",
             "url": r["url"] or "", "title": r["title"] or "",
             "quality": r["quality"] or "", "section": r["section"] or "",
             "date_after": r["date_after"] or "", "date_before": r["date_before"] or "",
-            "out_dir": r["out_dir"] or "", "error": r["error"],
+            "out_dir": r["out_dir"] or "", "subtitles": r["subtitles"] or "",
+            "error": r["error"],
             "total_videos": r["total"] or len(vids),
             "completed_videos": done if vids else (r["completed"] or 0),
             "failed_videos": failed if vids else (r["failed"] or 0),
@@ -706,11 +733,14 @@ def run_pool(job_id: str, videos: list, base_opts: dict, ext: str = "mp4"):
 
 # ── yt-dlp option builder ─────────────────────────────────────────────────────
 def _base_opts(cfg: dict, quality: str, out: Path, mode: str,
-               archive: Path = None) -> dict:
+               archive: Path = None, subs: str = None) -> dict:
     fmt, ext = QUALITY_MAP.get(quality, QUALITY_MAP["best"])
     rate_limit = float(cfg.get("speed_limit_mbps", 0) or 0)
     cookies_browser = str(cfg.get("cookies_browser", "") or "").strip()
-    subs_lang = str(cfg.get("subtitles_lang", "") or "").strip()
+    try:
+        subs_lang = normalize_subs(subs if subs is not None else cfg.get("subtitles_lang", ""))
+    except ValueError:
+        subs_lang = ""
     spons = bool(cfg.get("sponsorblock", False))
 
     opts = dict(
@@ -738,8 +768,9 @@ def _base_opts(cfg: dict, quality: str, out: Path, mode: str,
         opts["cookiesfrombrowser"] = (cookies_browser,)
     if subs_lang:
         opts["writesubtitles"] = True
-        opts["subtitleslangs"] = ["all"] if subs_lang == "all" else [subs_lang]
         opts["writeautomaticsub"] = True
+        opts["subtitleslangs"] = ["all"] if subs_lang == "all" else subs_lang.split(",")
+        opts["subtitlesformat"] = "vtt/srt/best"
     if spons:
         opts["sponsorblock_remove"] = {"sponsor", "selfpromo", "interaction",
                                        "intro", "outro", "preview", "music_offtopic"}
@@ -752,7 +783,7 @@ def _base_opts(cfg: dict, quality: str, out: Path, mode: str,
 
 # ── Master job worker ─────────────────────────────────────────────────────────
 def run_job(job_id: str, mode: str, url: str, quality: str,
-            date_after: str, date_before: str, section: str):
+            date_after: str, date_before: str, section: str, subtitles: str = ""):
 
     cfg = get_cfg()
     dl_dir = Path(cfg["download_dir"]).expanduser()
@@ -783,7 +814,7 @@ def run_job(job_id: str, mode: str, url: str, quality: str,
                 "downloaded_bytes": 0, "total_bytes": 0, "error": None,
                 "retry_count": 0, "filepath": None, "filesize": 0,
             }]
-            base_opts, ext = _base_opts(cfg, quality, out, mode)
+            base_opts, ext = _base_opts(cfg, quality, out, mode, subs=subtitles)
             with jobs_lock:
                 jobs[job_id]["title"] = title
 
@@ -798,7 +829,7 @@ def run_job(job_id: str, mode: str, url: str, quality: str,
             out = dl_dir / "Playlists" / pl_title
             out.mkdir(parents=True, exist_ok=True)
             videos = scan_videos(job_id, url)
-            base_opts, ext = _base_opts(cfg, quality, out, mode)
+            base_opts, ext = _base_opts(cfg, quality, out, mode, subs=subtitles)
 
         elif mode == "channel":
             tab = {"videos": "/videos", "shorts": "/shorts",
@@ -829,7 +860,7 @@ def run_job(job_id: str, mode: str, url: str, quality: str,
                 db = to_ytdlp_date(date_before) if date_before else "today"
                 extra["daterange"] = yt_dlp.utils.DateRange(da, db)
             videos = scan_videos(job_id, dl_url, extra)
-            base_opts, ext = _base_opts(cfg, quality, out, mode, archive=archive)
+            base_opts, ext = _base_opts(cfg, quality, out, mode, archive=archive, subs=subtitles)
             if date_after:
                 da = to_ytdlp_date(date_after)
                 db = to_ytdlp_date(date_before) if date_before else "today"
@@ -1000,7 +1031,7 @@ def reset_settings():
 
 
 def _spawn_job(url: str, mode: str, quality: str, section: str,
-               date_after: str = "", date_before: str = "") -> str:
+               date_after: str = "", date_before: str = "", subtitles: str = "") -> str:
     job_id = _new_job_id()
     ts = int(time.time() * 1000)
     with jobs_lock:
@@ -1011,11 +1042,11 @@ def _spawn_job(url: str, mode: str, quality: str, section: str,
             "active_slots": 0, "max_concurrent": 0, "base_opts": {},
             "mode": mode, "url": url, "quality": quality, "section": section,
             "date_after": date_after, "date_before": date_before,
-            "title": "", "out_dir": "", "preview": {},
+            "subtitles": subtitles, "title": "", "out_dir": "", "preview": {},
         }
     _persist_job(job_id)
     threading.Thread(target=run_job,
-                     args=(job_id, mode, url, quality, date_after, date_before, section),
+                     args=(job_id, mode, url, quality, date_after, date_before, section, subtitles),
                      daemon=True).start()
     return job_id
 
@@ -1029,6 +1060,13 @@ def start_download():
     date_after  = (data.get("dateAfter") or "").strip()
     date_before = (data.get("dateBefore") or "").strip()
     section     = data.get("section", "videos")
+    if "subtitles" in data:
+        try:
+            subtitles = normalize_subs(data.get("subtitles"))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+    else:
+        subtitles = normalize_subs(settings.get("subtitles_lang", ""))
 
     if not url:
         return jsonify({"error": "URL is required"}), 400
@@ -1041,7 +1079,7 @@ def start_download():
     if quality not in QUALITY_MAP:
         return jsonify({"error": f"Invalid quality: {quality}"}), 400
 
-    job_id = _spawn_job(url, mode, quality, section, date_after, date_before)
+    job_id = _spawn_job(url, mode, quality, section, date_after, date_before, subtitles)
     return jsonify({"jobId": job_id})
 
 
@@ -1219,6 +1257,8 @@ def get_info():
             info = ydl.extract_info(url, download=False)
         entries = info.get("entries") or []
         count = info.get("playlist_count") or (len(entries) if entries else 0)
+        manual_subs = sorted((info.get("subtitles") or {}).keys())
+        auto_subs = sorted((info.get("automatic_captions") or {}).keys())
         return jsonify({
             "title":       info.get("title") or info.get("playlist_title", ""),
             "channel":     info.get("channel") or info.get("uploader", ""),
@@ -1226,6 +1266,8 @@ def get_info():
             "duration":    info.get("duration", 0),
             "is_playlist": info.get("_type") == "playlist",
             "count":       count,
+            "subtitle_manual": manual_subs[:40],
+            "subtitle_auto":   auto_subs[:40],
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -1390,7 +1432,8 @@ def history_relaunch(job_id):
     mode = row.get("mode") if row.get("mode") in ("single", "playlist", "channel") else "single"
     quality = row.get("quality") if row.get("quality") in QUALITY_MAP else "best"
     new_id = _spawn_job(url, mode, quality, row.get("section") or "videos",
-                        row.get("date_after") or "", row.get("date_before") or "")
+                        row.get("date_after") or "", row.get("date_before") or "",
+                        row.get("subtitles") or "")
     return jsonify({"jobId": new_id})
 
 
@@ -1416,7 +1459,7 @@ def history_retry_failed(job_id):
     except Exception as exc:
         return jsonify({"error": f"Cannot create {out}: {exc}"}), 400
     quality = row.get("quality") if row.get("quality") in QUALITY_MAP else "best"
-    base_opts, ext = _base_opts(cfg, quality, out, "retry")
+    base_opts, ext = _base_opts(cfg, quality, out, "retry", subs=row.get("subtitles") or "")
     videos = []
     for i, v in enumerate(failed, 1):
         videos.append({

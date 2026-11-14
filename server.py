@@ -1231,6 +1231,20 @@ def get_info():
         return jsonify({"error": str(e)}), 400
 
 
+def _promote_retry_entry(retry_id: str):
+    """Turn an orphaned retry entry into a normal library card."""
+    try:
+        with _db() as db:
+            row = db.execute("SELECT title, total FROM jobs WHERE job_id=?", (retry_id,)).fetchone()
+            if not row:
+                return
+            title = re.sub(r"^Retry · ", "", row[0] or "") or "Download"
+            mode = "single" if (row[1] or 0) == 1 else "playlist"
+            db.execute("UPDATE jobs SET title=?, mode=? WHERE job_id=?", (title, mode, retry_id))
+    except Exception as exc:
+        log.debug("retry promotion failed: %s", exc)
+
+
 def _merge_retry_results(origin_id: str, retry_id: str, videos: list):
     """Fold a finished retry back into its original library entry."""
     try:
@@ -1238,9 +1252,10 @@ def _merge_retry_results(origin_id: str, retry_id: str, videos: list):
         _upsert_videos(origin_id, videos)
         with _db() as db:
             if not db.execute("SELECT 1 FROM jobs WHERE job_id=?", (origin_id,)).fetchone():
-                # The original was deleted meanwhile: keep the retry as a
-                # normal entry instead of throwing the result away.
+                # The original was deleted meanwhile: keep the retry result,
+                # but promote it to a normal card.
                 _persist_job(retry_id, include_videos=True)
+                _promote_retry_entry(retry_id)
                 return
             rows = db.execute("SELECT status, COUNT(*) FROM videos WHERE job_id=? GROUP BY status",
                               (origin_id,)).fetchall()
@@ -1281,6 +1296,7 @@ def _merge_legacy_retries():
     try:
         _init_db()
         pairs = []
+        orphans = []
         with _db() as db:
             retries = [dict(r) for r in db.execute(
                 "SELECT * FROM jobs WHERE mode='retry' ORDER BY ts").fetchall()]
@@ -1291,6 +1307,7 @@ def _merge_legacy_retries():
                     "SELECT job_id FROM jobs WHERE mode<>'retry' AND url=? AND job_id<>? "
                     "ORDER BY ts DESC LIMIT 1", (r["url"], r["job_id"])).fetchone()
                 if not origin:
+                    orphans.append(r["job_id"])
                     continue
                 origin_id = origin[0]
                 vids = [dict(v) for v in db.execute(
@@ -1316,6 +1333,9 @@ def _merge_legacy_retries():
         for origin_id, retry_id, vids in pairs:
             _merge_retry_results(origin_id, retry_id, vids)
             log.info("Merged legacy retry %s into %s", retry_id, origin_id)
+        for retry_id in orphans:
+            _promote_retry_entry(retry_id)
+            log.info("Promoted orphaned retry %s to a normal entry", retry_id)
     except Exception as exc:
         log.warning("Legacy retry cleanup failed: %s", exc)
 

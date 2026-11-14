@@ -1719,7 +1719,7 @@ function renderHistory(){
     const actions = `
       ${j.url ? `<button class="btn btn-ghost" data-act="relaunch" title="${esc(t('act.relaunch'))}"><svg class="ic"><use href="#i-retry"/></svg><span>${esc(t('act.relaunch'))}</span></button>` : ''}
       ${(j.failed_videos && j.preview.length) ? `<button class="btn btn-quiet" data-act="retryfailed"><svg class="ic"><use href="#i-alert"/></svg><span>${esc(t('act.retryfailed'))}</span></button>` : ''}
-      ${j.completed_videos ? `<button class="btn btn-quiet" data-act="subtitles" title="${esc(t('act.subtitles'))}"><span style="font-size:9px;font-weight:700;letter-spacing:.5px">CC</span></button>` : ''}
+      ${(j.completed_videos && !['running','scanning','ready'].includes(j.status)) ? `<button class="btn btn-quiet" data-act="subtitles" title="${esc(t('act.subtitles'))}"><span style="font-size:9px;font-weight:700;letter-spacing:.5px">CC</span></button>` : ''}
       ${j.out_dir ? `<button class="btn btn-quiet" data-act="openfolder" title="${esc(t('act.openfolder'))}"><svg class="ic"><use href="#i-folder"/></svg></button>` : ''}
       <button class="btn btn-quiet" data-act="details" title="${esc(t('act.details'))}"><svg class="ic"><use href="#i-chevron"/></svg></button>
       <button class="btn btn-quiet" data-act="delete" title="${esc(t('act.delete'))}"><svg class="ic"><use href="#i-trash"/></svg></button>`;

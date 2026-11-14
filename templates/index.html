@@ -293,6 +293,7 @@ a{color:inherit;text-decoration:none;}
 .vprog i.bad{background:var(--accent);}
 .vstate{position:absolute;top:6px;inset-inline-start:6px;font-family:var(--font-mono);font-size:8px;letter-spacing:.6px;text-transform:uppercase;padding:3px 6px;border-radius:4px;background:rgba(8,7,6,.72);color:#e9e0d2;backdrop-filter:blur(4px);}
 .vstate.downloading{background:rgba(58,110,170,.9);}
+.vstate.subtitles{background:rgba(122,167,217,.9);}
 .vstate.processing{background:rgba(170,120,30,.9);}
 .vstate.done{background:rgba(70,110,55,.9);}
 .vstate.error{background:rgba(190,50,32,.9);}
@@ -897,6 +898,7 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
   <div class="dialog">
     <h3 id="modal-title"></h3>
     <p id="modal-body"></p>
+    <input class="inp" id="modal-input" style="display:none;width:100%;margin-top:14px" autocomplete="off" spellcheck="false">
     <div class="dialog-actions">
       <button class="btn btn-ghost btn-sm" id="modal-cancel"></button>
       <button class="btn btn-danger btn-sm" id="modal-ok"></button>
@@ -935,6 +937,7 @@ en: {
   'act.relaunch':'Relaunch','act.details':'Details','act.hide':'Hide','act.delete':'Delete',
   'act.openfolder':'Open folder','act.retryfailed':'Retry failed','act.openfile':'Open file',
   'act.cancel':'Cancel','act.close':'Close','act.confirm':'Confirm','act.gotit':'Got it',
+  'act.subtitles':'Get subtitles','subs.prompt.title':'Subtitle language','subs.prompt.body':'Enter one or more language codes, for example ar or en,fr.','subs.prompt.empty':'Enter a language code.',
   'lb.quality':'Quality','lb.section':'Section','lb.after':'Published after','lb.before':'Published before',
   'subs.label':'Subtitles','subs.all':'All languages','subs.custom':'Custom…','subs.codes':'Language codes',
   'subs.available':'Available: {langs}','subs.auto':'Auto captions: {langs}','subs.tip':'Writes .vtt files next to the video.',
@@ -972,7 +975,7 @@ en: {
   'theme.dark':'Dark room','theme.light':'Paper archive',
   'badge.saved':'Saved',
   'st.scanning':'Scanning','st.queued':'Queued','st.ready':'Ready','st.running':'Downloading',
-  'st.done':'Done','st.error':'Error','st.cancelled':'Cancelled','st.processing':'Merging',
+  'st.done':'Done','st.error':'Error','st.cancelled':'Cancelled','st.processing':'Merging','st.subtitles':'Subtitles',
   'st.skipped':'Skipped','st.downloading':'Downloading',
   'job.title':'Download','job.videos':'{n} videos','job.slots':'{a}/{m} active',
   'job.scanning':'Scanning the link…','job.ready':'Found {n} videos','job.ready.one':'Found 1 video',
@@ -985,7 +988,7 @@ en: {
   'toast.deleted':'Removed from the library.','toast.cleared':'Library cleared.',
   'toast.nofailed':'This entry has no failed videos.','toast.cancel':'Cancellation requested.',
   'toast.copied':'Pasted from clipboard.','toast.copyfail':'Clipboard is not available.',
-  'toast.opened':'Opened.','toast.openfail':'Could not open that location.',
+  'toast.opened':'Opened.','toast.openfail':'Could not open that location.','toast.subsstarted':'Fetching {langs} subtitles…',
   'toast.loadfail':'Could not load the library.','toast.setfail':'Could not save preferences.',
   'confirm.clear.title':'Clear the library?',
   'confirm.clear.body':'History entries disappear, but the downloaded files stay exactly where they are.',
@@ -1008,6 +1011,7 @@ fr: {
   'act.relaunch':'Relancer','act.details':'Détails','act.hide':'Masquer','act.delete':'Supprimer',
   'act.openfolder':'Dossier','act.retryfailed':'Réessayer les échecs','act.openfile':'Ouvrir le fichier',
   'act.cancel':'Annuler','act.close':'Fermer','act.confirm':'Confirmer','act.gotit':'Compris',
+  'act.subtitles':'Obtenir les sous-titres','subs.prompt.title':'Langue des sous-titres','subs.prompt.body':'Entrez un ou plusieurs codes, par exemple ar ou en,fr.','subs.prompt.empty':'Entrez un code de langue.',
   'lb.quality':'Qualité','lb.section':'Section','lb.after':'Publié après','lb.before':'Publié avant',
   'subs.label':'Sous-titres','subs.all':'Toutes les langues','subs.custom':'Personnalisé…','subs.codes':'Codes de langue',
   'subs.available':'Disponibles : {langs}','subs.auto':'Sous-titres auto : {langs}','subs.tip':'Crée des fichiers .vtt à côté de la vidéo.',
@@ -1045,7 +1049,7 @@ fr: {
   'theme.dark':'Salle sombre','theme.light':'Archive papier',
   'badge.saved':'Enregistré',
   'st.scanning':'Analyse','st.queued':'En attente','st.ready':'Prêt','st.running':'Téléchargement',
-  'st.done':'Terminé','st.error':'Erreur','st.cancelled':'Annulé','st.processing':'Fusion',
+  'st.done':'Terminé','st.error':'Erreur','st.cancelled':'Annulé','st.processing':'Fusion','st.subtitles':'Sous-titres',
   'st.skipped':'Ignoré','st.downloading':'Téléchargement',
   'job.title':'Téléchargement','job.videos':'{n} vidéos','job.slots':'{a}/{m} actifs',
   'job.scanning':'Analyse du lien…','job.ready':'{n} vidéos trouvées','job.ready.one':'1 vidéo trouvée',
@@ -1058,7 +1062,7 @@ fr: {
   'toast.deleted':'Retiré de la bibliothèque.','toast.cleared':'Bibliothèque vidée.',
   'toast.nofailed':'Cette entrée n\u2019a aucun échec.','toast.cancel':'Annulation demandée.',
   'toast.copied':'Collé depuis le presse-papiers.','toast.copyfail':'Presse-papiers indisponible.',
-  'toast.opened':'Ouvert.','toast.openfail':'Impossible d\u2019ouvrir cet emplacement.',
+  'toast.opened':'Ouvert.','toast.openfail':'Impossible d\u2019ouvrir cet emplacement.','toast.subsstarted':'Récupération des sous-titres {langs}…',
   'toast.loadfail':'Impossible de charger la bibliothèque.','toast.setfail':'Impossible d\u2019enregistrer.',
   'confirm.clear.title':'Vider la bibliothèque ?',
   'confirm.clear.body':'Les entrées disparaissent, mais les fichiers téléchargés restent à leur place.',
@@ -1081,6 +1085,7 @@ ar: {
   'act.relaunch':'إعادة التشغيل','act.details':'التفاصيل','act.hide':'إخفاء','act.delete':'حذف',
   'act.openfolder':'المجلد','act.retryfailed':'إعادة الفاشلة','act.openfile':'فتح الملف',
   'act.cancel':'إلغاء','act.close':'إغلاق','act.confirm':'تأكيد','act.gotit':'حسنًا',
+  'act.subtitles':'تنزيل الترجمات','subs.prompt.title':'لغة الترجمة','subs.prompt.body':'أدخل رمزًا أو أكثر، مثل ar أو en,fr.','subs.prompt.empty':'أدخل رمز اللغة.',
   'lb.quality':'الجودة','lb.section':'القسم','lb.after':'نُشر بعد','lb.before':'نُشر قبل',
   'subs.label':'الترجمات','subs.all':'كل اللغات','subs.custom':'مخصص…','subs.codes':'رموز اللغة',
   'subs.available':'المتاح: {langs}','subs.auto':'ترجمات تلقائية: {langs}','subs.tip':'ينشئ ملفات .vtt بجانب الفيديو.',
@@ -1118,7 +1123,7 @@ ar: {
   'theme.dark':'غرفة داكنة','theme.light':'أرشيف ورقي',
   'badge.saved':'تم الحفظ',
   'st.scanning':'فحص','st.queued':'في الانتظار','st.ready':'جاهز','st.running':'جارٍ التنزيل',
-  'st.done':'تم','st.error':'خطأ','st.cancelled':'أُلغي','st.processing':'دمج',
+  'st.done':'تم','st.error':'خطأ','st.cancelled':'أُلغي','st.processing':'دمج','st.subtitles':'الترجمات',
   'st.skipped':'تخطي','st.downloading':'جارٍ التنزيل',
   'job.title':'تنزيل','job.videos':'{n} فيديو','job.slots':'{a}/{m} نشط',
   'job.scanning':'جارٍ فحص الرابط…','job.ready':'تم العثور على {n} فيديو','job.ready.one':'تم العثور على فيديو واحد',
@@ -1131,7 +1136,7 @@ ar: {
   'toast.deleted':'أُزيل من المكتبة.','toast.cleared':'تم تفريغ المكتبة.',
   'toast.nofailed':'لا توجد فيديوهات فاشلة.','toast.cancel':'تم طلب الإلغاء.',
   'toast.copied':'تم اللصق من الحافظة.','toast.copyfail':'الحافظة غير متاحة.',
-  'toast.opened':'تم الفتح.','toast.openfail':'تعذر فتح هذا الموقع.',
+  'toast.opened':'تم الفتح.','toast.openfail':'تعذر فتح هذا الموقع.','toast.subsstarted':'جارٍ تنزيل ترجمات {langs}…',
   'toast.loadfail':'تعذر تحميل المكتبة.','toast.setfail':'تعذر حفظ التفضيلات.',
   'confirm.clear.title':'تفريغ المكتبة؟',
   'confirm.clear.body':'ستختفي الإدخالات، لكن الملفات المنزلة تبقى في مكانها.',
@@ -1714,6 +1719,7 @@ function renderHistory(){
     const actions = `
       ${j.url ? `<button class="btn btn-ghost" data-act="relaunch" title="${esc(t('act.relaunch'))}"><svg class="ic"><use href="#i-retry"/></svg><span>${esc(t('act.relaunch'))}</span></button>` : ''}
       ${(j.failed_videos && j.preview.length) ? `<button class="btn btn-quiet" data-act="retryfailed"><svg class="ic"><use href="#i-alert"/></svg><span>${esc(t('act.retryfailed'))}</span></button>` : ''}
+      ${j.completed_videos ? `<button class="btn btn-quiet" data-act="subtitles" title="${esc(t('act.subtitles'))}"><span style="font-size:9px;font-weight:700;letter-spacing:.5px">CC</span></button>` : ''}
       ${j.out_dir ? `<button class="btn btn-quiet" data-act="openfolder" title="${esc(t('act.openfolder'))}"><svg class="ic"><use href="#i-folder"/></svg></button>` : ''}
       <button class="btn btn-quiet" data-act="details" title="${esc(t('act.details'))}"><svg class="ic"><use href="#i-chevron"/></svg></button>
       <button class="btn btn-quiet" data-act="delete" title="${esc(t('act.delete'))}"><svg class="ic"><use href="#i-trash"/></svg></button>`;
@@ -1758,6 +1764,20 @@ $('#hist-list').addEventListener('click', async e => {
       createJobPanel({id: d.jobId, ts: Date.now(), status: 'running', mode: 'retry', title: '', videos: [], total_videos: 0});
       showView('download');
       toast(t('toast.retry'));
+    }catch(err){ toast(err.message, true); }
+  } else if(act === 'subtitles'){
+    let langs = await inputDialog(t('subs.prompt.title'), t('subs.prompt.body'), item?.subtitles || '');
+    if(langs === null) return;
+    langs = langs.trim();
+    if(!langs){ toast(t('subs.prompt.empty'), true); return; }
+    try{
+      const d = await api('/api/history/' + encodeURIComponent(jobId) + '/subtitles',
+        {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({langs})});
+      createJobPanel({id:d.jobId, ts:Date.now(), status:'running', mode:'subs',
+                      title:'Subtitles · ' + (item?.title || ''), videos:[],
+                      total_videos:0, completed_videos:0, failed_videos:0, scan_count:0});
+      showView('download');
+      toast(t('toast.subsstarted', {langs:d.langs}));
     }catch(err){ toast(err.message, true); }
   } else if(act === 'openfolder'){
     openPath({jobId});
@@ -1950,20 +1970,42 @@ function openDownloadDir(){ openPath({path: $('#s-dir').value.trim()}); }
    Modal confirm
    ═══════════════════════════════════════════════════════════════════════════ */
 let modalResolve = null;
-function confirmDialog(title, body, okLabel){
+let modalHasInput = false;
+function openModal(title, body, okLabel, inputValue){
   $('#modal-title').textContent = title;
   $('#modal-body').textContent = body;
   $('#modal-ok').textContent = okLabel || t('act.confirm');
   $('#modal-cancel').textContent = t('act.cancel');
+  const inp = $('#modal-input');
+  if(inputValue !== null && inputValue !== undefined){
+    modalHasInput = true;
+    inp.style.display = '';
+    inp.value = inputValue;
+    setTimeout(() => { inp.focus(); inp.select(); }, 60);
+  } else {
+    modalHasInput = false;
+    inp.style.display = 'none';
+  }
   $('#modal').classList.add('open');
   return new Promise(resolve => { modalResolve = resolve; });
 }
+function confirmDialog(title, body, okLabel){
+  return openModal(title, body, okLabel, null);
+}
+function inputDialog(title, body, value){
+  return openModal(title, body, t('act.confirm'), value).then(v => {
+    if(v === true) return $('#modal-input').value.trim();
+    return null;
+  });
+}
 function closeModal(v){
   $('#modal').classList.remove('open');
-  if(modalResolve){ modalResolve(v); modalResolve = null; }
+  const out = modalHasInput ? (v ? $('#modal-input').value.trim() : null) : v;
+  if(modalResolve){ modalResolve(out); modalResolve = null; }
 }
 $('#modal-cancel').addEventListener('click', () => closeModal(false));
 $('#modal-ok').addEventListener('click', () => closeModal(true));
+$('#modal-input').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); closeModal(true); } });
 $('#modal').addEventListener('click', e => { if(e.target === $('#modal')) closeModal(false); });
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') closeModal(false);

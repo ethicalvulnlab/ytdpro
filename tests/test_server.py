@@ -306,3 +306,48 @@ def test_tv_quality_preset(server):
     opts, ext = server._base_opts(server.get_cfg(), "tv", Path("/tmp/x"), "single")
     assert ext == "mp4"
     assert "avc1" in opts["format"] and "mp4a" in opts["format"]
+
+
+def test_subtitle_patterns(server):
+    assert server._subtitle_patterns("ar") == ["ar", "ar.*"]
+    assert server._subtitle_patterns("en,fr") == ["en", "en.*", "fr", "fr.*"]
+    assert server._subtitle_patterns("all") == ["all"]
+
+
+def test_fetch_subtitles_endpoint(server, monkeypatch):
+    _seed(server)
+    captured = {}
+    monkeypatch.setattr(server, "_spawn_subtitle_job",
+                        lambda job_id, row, langs: captured.update(
+                            job_id=job_id, langs=langs) or "subs-job")
+    c = client(server)
+    r = c.post("/api/history/j-hist/subtitles", json={"langs": "ar, en"})
+    assert r.status_code == 200
+    assert r.get_json()["jobId"] == "subs-job"
+    assert captured["langs"] == "ar,en"
+    assert c.post("/api/history/j-hist/subtitles", json={"langs": ""}).status_code == 400
+    assert c.post("/api/history/j-hist/subtitles", json={"langs": "bad;code"}).status_code == 400
+
+
+def test_run_subtitle_job_marks_done(server, monkeypatch, tmp_path):
+    _seed(server)
+    src = tmp_path / "First.mp4"
+    src.write_bytes(b"x")
+    stub = tmp_path / "First.en.srt"
+    stub.write_text("1\n00:00:00,000 --> 00:00:01,000\nHi\n")
+    monkeypatch.setattr(server, "_download_subtitles_for_video",
+                        lambda video, langs, cfg: [stub])
+    jid = "subs-run"
+    server.jobs[jid] = {
+        "id": jid, "ts": int(time.time() * 1000), "status": "running", "log": [],
+        "done": False, "error": None, "mode": "subs", "origin_job_id": "j-hist",
+        "total_videos": 1, "completed_videos": 0, "failed_videos": 0,
+        "active_slots": 0, "max_concurrent": 1, "base_opts": {}, "title": "Subtitles",
+        "videos": [{"id": "v1", "index": 1, "title": "First", "url": "https://example.com/v",
+                    "status": "queued", "percent": 0, "filepath": str(src),
+                    "thumbnail": "", "duration": 1, "error": None}],
+    }
+    server.run_subtitle_job(jid, "en")
+    assert server.jobs[jid]["done"] is True
+    assert server.jobs[jid]["status"] == "done"
+    assert server.jobs[jid]["videos"][0]["status"] == "done"

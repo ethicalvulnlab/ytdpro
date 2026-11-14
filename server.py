@@ -1226,7 +1226,8 @@ def job_events(job_id):
                 j = copy.deepcopy(job)
                 j.pop("base_opts", None)
                 final = j.get("done") and not any(
-                    v["status"] in ("queued", "downloading", "processing") for v in j.get("videos", []))
+                    v["status"] in ("queued", "downloading", "processing", "subtitles")
+                    for v in j.get("videos", []))
             yield "data: " + json.dumps(j) + "\n\n"
             if final:
                 return
@@ -1453,6 +1454,174 @@ def _merge_legacy_retries():
         log.warning("Legacy retry cleanup failed: %s", exc)
 
 
+def _subtitle_patterns(langs: str) -> list:
+    """Language patterns that also match regional/translated variants."""
+    if langs == "all":
+        return ["all"]
+    patterns = []
+    for code in langs.split(","):
+        code = code.strip()
+        if not code:
+            continue
+        if code not in patterns:
+            patterns.append(code)
+        variant = f"{code}.*"
+        if variant not in patterns:
+            patterns.append(variant)
+    return patterns or ["all"]
+
+
+def _download_subtitles_for_video(video: dict, langs: str, cfg: dict):
+    """Fetch only subtitles for one finished video, next to its file."""
+    path = Path(video.get("filepath") or "")
+    if not video.get("url"):
+        raise RuntimeError("Missing video URL")
+    if not path.exists():
+        raise RuntimeError(f"Video file not found: {path}")
+    base = path.with_suffix("")
+    opts = {
+        "skip_download": True,
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "subtitleslangs": _subtitle_patterns(langs),
+        "subtitlesformat": "vtt/srt/best",
+        "outtmpl": str(base) + ".%(ext)s",
+        "quiet": True, "no_warnings": True, "noprogress": True,
+        "socket_timeout": int(cfg.get("socket_timeout", 30)),
+        "retries": 3, "fragment_retries": 3,
+        "color": "no_color",
+        "postprocessors": [{"key": "FFmpegSubtitlesConvertor", "format": "srt"}],
+    }
+    cookies = str(cfg.get("cookies_browser", "") or "").strip()
+    if cookies:
+        opts["cookiesfrombrowser"] = (cookies,)
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.download([video["url"]])
+    written = list(base.parent.glob(base.name + ".*.srt"))
+    if not written and base.with_suffix(".srt").exists():
+        written = [base.with_suffix(".srt")]
+    if not written:
+        raise RuntimeError(f"No subtitle written for {path.name} (language unavailable?)")
+    return written
+
+
+def run_subtitle_job(job_id: str, langs: str):
+    cfg = get_cfg()
+    with jobs_lock:
+        job = jobs.get(job_id)
+        if not job:
+            return
+        videos = job["videos"]
+        origin_id = job.get("origin_job_id")
+
+    success = False
+    for video in videos:
+        if cancel_flags.get(job_id):
+            break
+        with jobs_lock:
+            video["status"] = "subtitles"
+            video["percent"] = 0
+            video["error"] = None
+            job["log"].append(f"CC [{video['index']}] {video['title'][:65]}")
+        err = ""
+        for attempt in range(3):
+            try:
+                files = _download_subtitles_for_video(video, langs, cfg)
+                with jobs_lock:
+                    video["status"] = "done"
+                    video["percent"] = 100
+                    video["error"] = None
+                    video["subtitle_files"] = [str(f) for f in files]
+                    job["completed_videos"] += 1
+                    job["log"].append(f"✓ [{video['index']}] {', '.join(f.name for f in files)}")
+                err = ""
+                break
+            except yt_dlp.utils.DownloadCancelled:
+                with jobs_lock:
+                    video["status"] = "skipped"
+                err = ""
+                break
+            except Exception as exc:
+                err = _clean_error(exc)
+                if "429" in err and attempt < 2:
+                    wait = 10 * (attempt + 1)
+                    with jobs_lock:
+                        job["log"].append(f"⚠ rate-limited, waiting {wait}s before retry")
+                    time.sleep(wait)
+                    continue
+                with jobs_lock:
+                    video["status"] = "error"
+                    video["error"] = err
+                    job["failed_videos"] += 1
+                    job["log"].append(f"✗ [{video['index']}] {err[:110]}")
+                break
+        time.sleep(1.0)
+
+    with jobs_lock:
+        job = jobs.get(job_id)
+        if job:
+            job["done"] = True
+            job["active_slots"] = 0
+            if cancel_flags.get(job_id):
+                job["status"] = "cancelled"
+                for v in job.get("videos", []):
+                    if v.get("status") in ("queued", "subtitles"):
+                        v["status"] = "skipped"
+                job["log"].append("Subtitle fetch cancelled.")
+            elif job.get("failed_videos", 0) == 0:
+                job["status"] = "done"
+                job["log"].append(f"{job.get('completed_videos', 0)} subtitle file(s) ready.")
+                success = True
+            else:
+                job["status"] = "error"
+                job["error"] = f"{job['failed_videos']} video(s) had no downloadable subtitle"
+                job["log"].append(job["error"])
+    cancel_flags.pop(job_id, None)
+
+    # Remember the language choice on the original library entry.
+    if origin_id and success:
+        try:
+            with _db() as db:
+                db.execute("UPDATE jobs SET subtitles=? WHERE job_id=?", (langs, origin_id))
+        except Exception as exc:
+            log.debug("subtitle language update failed: %s", exc)
+
+
+def _spawn_subtitle_job(job_id: str, row: dict, langs: str) -> str:
+    videos = []
+    for v in row.get("videos", []):
+        if v.get("status") != "done" or not v.get("filepath") or not v.get("url"):
+            continue
+        videos.append({
+            "id": v["video_id"], "index": v.get("idx") or len(videos) + 1,
+            "title": v.get("title") or Path(v["filepath"]).stem,
+            "url": v["url"], "thumbnail": v.get("thumbnail"),
+            "duration": v.get("duration") or 0, "status": "queued", "percent": 0,
+            "speed": "", "eta": "", "downloaded_bytes": 0, "total_bytes": 0,
+            "error": None, "filepath": v["filepath"], "filesize": v.get("filesize") or 0,
+        })
+    if not videos:
+        return ""
+
+    new_id = _new_job_id()
+    ts = int(time.time() * 1000)
+    with jobs_lock:
+        jobs[new_id] = {
+            "id": new_id, "ts": ts, "status": "running",
+            "log": [f"Fetching '{langs}' subtitles for {len(videos)} video(s)"],
+            "done": False, "error": None, "videos": videos,
+            "scan_count": len(videos), "total_videos": len(videos),
+            "completed_videos": 0, "failed_videos": 0, "active_slots": 0,
+            "max_concurrent": 1, "base_opts": {}, "mode": "subs",
+            "url": row.get("url") or "", "title": f"Subtitles · {row.get('title') or job_id}",
+            "quality": row.get("quality") or "", "section": "",
+            "date_after": "", "date_before": "", "out_dir": row.get("out_dir") or "",
+            "subtitles": langs, "origin_job_id": job_id,
+        }
+    threading.Thread(target=run_subtitle_job, args=(new_id, langs), daemon=True).start()
+    return new_id
+
+
 # ── History API ───────────────────────────────────────────────────────────────
 @app.route("/api/history")
 def history_list():
@@ -1579,6 +1748,33 @@ def history_retry_failed(job_id):
             _merge_retry_results(job_id, new_id, videos)
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"jobId": new_id})
+
+
+@app.route("/api/history/<job_id>/subtitles", methods=["POST"])
+def history_fetch_subtitles(job_id):
+    """Fetch subtitles only for already-downloaded videos of a job."""
+    row = _history_job(job_id)
+    if not row:
+        return jsonify({"error": "Not found"}), 404
+    data = request.json or {}
+    try:
+        langs = normalize_subs(data.get("langs", row.get("subtitles") or ""))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if not langs:
+        return jsonify({"error": "Choose a subtitle language"}), 400
+
+    with jobs_lock:
+        busy = any(
+            j.get("mode") == "subs" and j.get("origin_job_id") == job_id and not j.get("done")
+            for j in jobs.values())
+    if busy:
+        return jsonify({"error": "A subtitle fetch is already running for this job"}), 409
+
+    new_id = _spawn_subtitle_job(job_id, row, langs)
+    if not new_id:
+        return jsonify({"error": "No completed videos with files to fetch subtitles for"}), 400
+    return jsonify({"jobId": new_id, "langs": langs})
 
 
 def pget(d, k, default=""):

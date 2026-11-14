@@ -56,6 +56,7 @@ everything to a folder you choose. The browser is just the remote control.
 - **Search** by title or URL, filter by **Done / Failed / Cancelled**
 - **Relaunch** any past download with its original mode, quality and dates (a new attempt gets its own entry)
 - **Retry failed** items from a finished job — results are merged back into the same library entry, so no duplicate cards
+- **Get subtitles later** for already-downloaded videos — no media re-download
 - **Open folder** / **open file** straight from the library
 - **Stats**: videos banked, success rate, disk usage, 14-day activity
 - Configurable retention (30 days, 90 days, 1 year, or forever)

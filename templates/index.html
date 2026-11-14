@@ -1451,7 +1451,7 @@ function processJobState(id, d){
     if(st.es){ st.es.close(); st.es = null; }
     if(st.timer){ clearInterval(st.timer); st.timer = null; }
     updateRail(); updateSlotPill();
-    if(curView === 'history') loadStats();
+    if(curView === 'history'){ loadHistory(); loadStats(); }
     loadRecent();
   }
   updateRail(); updateSlotPill();

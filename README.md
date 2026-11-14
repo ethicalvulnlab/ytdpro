@@ -53,8 +53,8 @@ everything to a folder you choose. The browser is just the remote control.
 - Persistent **SQLite history** — survives restarts and browser refreshes
 - Rich cards: thumbnail, title, source URL, mode, quality, duration, total size
 - **Search** by title or URL, filter by **Done / Failed / Cancelled**
-- **Relaunch** any past download with its original mode, quality and dates
-- **Retry failed** items from a finished job (only the failures, not the whole job)
+- **Relaunch** any past download with its original mode, quality and dates (a new attempt gets its own entry)
+- **Retry failed** items from a finished job — results are merged back into the same library entry, so no duplicate cards
 - **Open folder** / **open file** straight from the library
 - **Stats**: videos banked, success rate, disk usage, 14-day activity
 - Configurable retention (30 days, 90 days, 1 year, or forever)
@@ -253,6 +253,20 @@ Install `ffmpeg` and make sure `ffprobe` is on the same PATH.
 ```bash
 YT_PORT=8081 ./venv/bin/python server.py
 ```
+
+**Every video fails with `HTTP Error 403`**
+YouTube changed something or your yt-dlp is stale. Update it **inside the app's
+venv** and restart — do not use system `pip` on Kali/Debian:
+
+```bash
+cd ~/Downloads/ytdpro-web
+./venv/bin/pip install -U yt-dlp
+pkill -f "ytdpro-web.*server.py"
+./venv/bin/python server.py
+```
+
+If it still fails, set **Settings → Access → Browser cookies** to the browser you
+use for YouTube, close that browser, and retry.
 
 **Downloads are slow / rate limited**
 Lower **Settings → Downloads → Concurrent downloads**, or set a **speed limit**

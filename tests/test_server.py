@@ -205,6 +205,9 @@ def test_retry_failed_creates_job(server, monkeypatch, tmp_path):
     assert server.jobs[jid]["total_videos"] == 1
     assert server.jobs[jid]["videos"][0]["status"] == "queued"
     assert server.jobs[jid]["mode"] == "retry"
+    assert server.jobs[jid]["origin_job_id"] == "j-hist"
+    # The temporary retry must not become its own library entry.
+    assert client(server).get("/api/history").get_json()["total"] == 1
 
 
 def test_retry_failed_none(server, monkeypatch):
@@ -237,3 +240,21 @@ def test_playlist_outtmpl_uses_video_index(server):
     tpl = "/x/%(playlist_index)02d - %(title)s.%(ext)s"
     assert server._video_outtmpl(tpl, 7) == "/x/07 - %(title)s.%(ext)s"
     assert server._video_outtmpl("%(title)s.%(ext)s", 3) == "%(title)s.%(ext)s"
+
+
+def test_clean_error_strips_ansi(server):
+    assert server._clean_error("\x1b[0;31mERROR:\x1b[0m boom") == "ERROR: boom"
+    assert server._clean_error("[0;31mERROR: [0m nope") == "ERROR: nope"
+
+
+def test_merge_retry_results_updates_original(server):
+    _seed(server)
+    retried = {"id": "v2", "index": 2, "title": "Second", "url": "https://example.com/v",
+               "thumbnail": "http://img/2.jpg", "duration": 30, "status": "done",
+               "filepath": "/tmp/ytdpro-test/Second.mp4", "filesize": 2000, "error": None}
+    server._merge_retry_results("j-hist", "retry-temp", [retried])
+    d = client(server).get("/api/history/j-hist").get_json()
+    assert d["completed"] == 2 and d["failed"] == 0
+    assert d["status"] == "done" and d["videos"][1]["status"] == "done"
+    assert d["videos"][1]["filesize"] == 2000
+    assert client(server).get("/api/history").get_json()["total"] == 1

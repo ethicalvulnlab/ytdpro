@@ -149,6 +149,16 @@ def _is_public_url(url: str) -> tuple[bool, str]:
     return True, ""
 
 
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m|\[\d+(?:;\d+)*m")
+
+
+def _clean_error(value) -> str:
+    """Strip terminal colour codes from yt-dlp errors before storing them."""
+    text = _ANSI_RE.sub("", str(value or ""))
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+
 def best_thumb(entry: dict) -> str:
     if entry.get("thumbnail"):
         return entry["thumbnail"]
@@ -309,10 +319,21 @@ def _persist_job(job_id: str, include_videos: bool = False):
 def _persist_video(job_id: str, video: dict):
     with jobs_lock:
         job = jobs.get(job_id)
+        origin = job.get("origin_job_id") if job else None
         total = len(job.get("videos", [])) if job else 0
         completed = job.get("completed_videos", 0) if job else 0
         failed = job.get("failed_videos", 0) if job else 0
         status = job.get("status") if job else None
+
+    # A retry continues the original download; write its result into the
+    # original job so it does not become a second library entry.
+    if origin:
+        try:
+            _upsert_videos(origin, [video])
+        except Exception as exc:
+            log.debug("retry video merge failed: %s", exc)
+        return
+
     try:
         _upsert_videos(job_id, [video])
         with _db() as db:
@@ -502,7 +523,7 @@ def make_video_hook(job_id: str, video_id: str):
                 vid["filepath"] = info.get("filepath") or d.get("filename") or vid.get("filepath")
             elif st == "error":
                 vid["status"] = "error"
-                vid["error"]  = str(d.get("error", "Unknown error"))
+                vid["error"]  = _clean_error(d.get("error", "Unknown error"))
                 vid["filepath"] = d.get("filename") or vid.get("filepath")
     return hook
 
@@ -657,7 +678,7 @@ def download_one(job_id: str, video: dict, base_opts: dict, ext: str = "mp4") ->
         return False
 
     except Exception as e:
-        err = str(e)
+        err = _clean_error(e)
         with jobs_lock:
             video["status"] = "error"
             video["error"]  = err
@@ -694,7 +715,7 @@ def _base_opts(cfg: dict, quality: str, out: Path, mode: str,
 
     opts = dict(
         format=fmt, merge_output_format=ext,
-        add_metadata=True, no_warnings=True, quiet=True, noprogress=True,
+        add_metadata=True, no_warnings=True, quiet=True, noprogress=True, color="no_color",
         socket_timeout=int(cfg.get("socket_timeout", 30)),
         concurrent_fragment_downloads=4,
         concurrent_fragments=4,
@@ -873,7 +894,9 @@ def run_job(job_id: str, mode: str, url: str, quality: str,
             elif success:
                 comp = job.get("completed_videos", 0)
                 fail = job.get("failed_videos", 0)
-                job["status"] = "done"
+                job["status"] = "error" if (fail and comp == 0) else "done"
+                if job["status"] == "error":
+                    job["error"] = f"{fail} video(s) failed"
                 job["log"].append(f"{comp} done, {fail} failed → {out}")
         cancel_flags.pop(job_id, None)
         _cleanup_video_cancel_flags(job_id)
@@ -1208,6 +1231,95 @@ def get_info():
         return jsonify({"error": str(e)}), 400
 
 
+def _merge_retry_results(origin_id: str, retry_id: str, videos: list):
+    """Fold a finished retry back into its original library entry."""
+    try:
+        _init_db()
+        _upsert_videos(origin_id, videos)
+        with _db() as db:
+            if not db.execute("SELECT 1 FROM jobs WHERE job_id=?", (origin_id,)).fetchone():
+                # The original was deleted meanwhile: keep the retry as a
+                # normal entry instead of throwing the result away.
+                _persist_job(retry_id, include_videos=True)
+                return
+            rows = db.execute("SELECT status, COUNT(*) FROM videos WHERE job_id=? GROUP BY status",
+                              (origin_id,)).fetchall()
+            counts = {r[0]: r[1] for r in rows}
+            total = sum(counts.values())
+            old_total = db.execute("SELECT total FROM jobs WHERE job_id=?", (origin_id,)).fetchone()[0] or 0
+            total = max(total, old_total)
+            done = counts.get("done", 0)
+            failed = counts.get("error", 0)
+            status = "done" if failed == 0 else "error"
+            error = None if failed == 0 else f"{failed} video(s) could not be downloaded"
+            db.execute("""UPDATE jobs SET total=?, completed=?, failed=?, status=?, error=?, updated_ts=?
+                          WHERE job_id=?""",
+                       (total, done, failed, status, error, int(time.time() * 1000), origin_id))
+            db.execute("DELETE FROM videos WHERE job_id=?", (retry_id,))
+            db.execute("DELETE FROM jobs WHERE job_id=?", (retry_id,))
+        with jobs_lock:
+            orig = jobs.get(origin_id)
+            if orig:
+                by_id = {v.get("id"): v for v in videos}
+                for v in orig.get("videos", []):
+                    new = by_id.get(v.get("id"))
+                    if new:
+                        for k in ("status", "filepath", "filesize", "error", "percent"):
+                            v[k] = new.get(k, v.get(k))
+                orig["completed_videos"] = done
+                orig["failed_videos"] = failed
+                orig["status"] = status
+                orig["error"] = error
+                if failed == 0:
+                    orig["done"] = True
+    except Exception as exc:
+        log.debug("retry merge failed: %s", exc)
+
+
+def _merge_legacy_retries():
+    """One-time cleanup for retry entries created by older versions."""
+    try:
+        _init_db()
+        pairs = []
+        with _db() as db:
+            retries = [dict(r) for r in db.execute(
+                "SELECT * FROM jobs WHERE mode='retry' ORDER BY ts").fetchall()]
+            for r in retries:
+                if not r.get("url"):
+                    continue
+                origin = db.execute(
+                    "SELECT job_id FROM jobs WHERE mode<>'retry' AND url=? AND job_id<>? "
+                    "ORDER BY ts DESC LIMIT 1", (r["url"], r["job_id"])).fetchone()
+                if not origin:
+                    continue
+                origin_id = origin[0]
+                vids = [dict(v) for v in db.execute(
+                    "SELECT * FROM videos WHERE job_id=? ORDER BY idx", (r["job_id"],)).fetchall()]
+                existing = {v[0] for v in db.execute(
+                    "SELECT video_id FROM videos WHERE job_id=?", (origin_id,)).fetchall()}
+                max_idx = db.execute(
+                    "SELECT COALESCE(MAX(idx),0) FROM videos WHERE job_id=?", (origin_id,)).fetchone()[0] or 0
+                mapped = []
+                for v in vids:
+                    idx = v["idx"]
+                    if v["video_id"] not in existing:
+                        max_idx += 1
+                        idx = max_idx
+                    mapped.append({
+                        "id": v["video_id"], "index": idx, "title": v["title"],
+                        "url": v["url"], "thumbnail": v["thumbnail"],
+                        "duration": v["duration"], "status": v["status"],
+                        "filepath": v["filepath"], "filesize": v["filesize"],
+                        "error": v["error"], "percent": 100 if v["status"] == "done" else 0,
+                    })
+                pairs.append((origin_id, r["job_id"], mapped))
+        for origin_id, retry_id, vids in pairs:
+            _merge_retry_results(origin_id, retry_id, vids)
+            log.info("Merged legacy retry %s into %s", retry_id, origin_id)
+    except Exception as exc:
+        log.warning("Legacy retry cleanup failed: %s", exc)
+
+
 # ── History API ───────────────────────────────────────────────────────────────
 @app.route("/api/history")
 def history_list():
@@ -1288,7 +1400,7 @@ def history_retry_failed(job_id):
     videos = []
     for i, v in enumerate(failed, 1):
         videos.append({
-            "id": v["video_id"], "index": i, "title": v.get("title") or pget(v, "url"),
+            "id": v["video_id"], "index": v.get("idx") or i, "title": v.get("title") or pget(v, "url"),
             "url": v.get("url"), "thumbnail": v.get("thumbnail"),
             "duration": v.get("duration") or 0, "status": "queued", "percent": 0,
             "speed": "", "eta": "", "downloaded_bytes": 0, "total_bytes": 0,
@@ -1310,8 +1422,10 @@ def history_retry_failed(job_id):
             "url": row.get("url") or "", "title": f"Retry · {row.get('title') or job_id}",
             "quality": quality, "section": row.get("section") or "",
             "date_after": "", "date_before": "", "out_dir": str(out),
+            "origin_job_id": job_id,
         }
-    _persist_job(new_id, include_videos=True)
+    # Do not persist the temporary retry job: its results are merged back
+    # into the original entry when it finishes.
 
     def _run():
         success = False
@@ -1328,7 +1442,7 @@ def history_retry_failed(job_id):
                 j["status"] = ("done" if j.get("failed_videos", 0) == 0 and success
                                else "error")
                 j["log"].append("Retry finished.")
-            _persist_job(new_id, include_videos=True)
+            _merge_retry_results(job_id, new_id, videos)
     threading.Thread(target=_run, daemon=True).start()
     return jsonify({"jobId": new_id})
 
@@ -1451,6 +1565,7 @@ def open_path():
 
 if __name__ == "__main__":
     Path(settings["download_dir"]).expanduser().mkdir(parents=True, exist_ok=True)
+    _merge_legacy_retries()
     port = int(os.environ.get("YT_PORT", "8080"))
     host = os.environ.get("YT_HOST", "127.0.0.1")
     print(f"\n  ytdpro is running!")

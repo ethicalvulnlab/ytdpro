@@ -25,6 +25,36 @@ The fix is always the same:
 
 ---
 
+## Skip conversion: download directly in TV format
+
+In ytdpro, choose the **TV** quality chip before starting. It asks yt-dlp for
+**H.264 video + AAC audio in MP4** and merges the streams without re-encoding,
+so a download takes seconds instead of a long conversion.
+
+Equivalent yt-dlp command:
+
+```bash
+yt-dlp \
+  -f "bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[ext=mp4][vcodec^=avc1][height<=1080]/bv*[vcodec^=avc1]+ba/b[ext=mp4]/best" \
+  --merge-output-format mp4 \
+  -o "%(title)s.%(ext)s" \
+  "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+- YouTube's H.264 streams are normally available up to **1080p**.
+- If a video has no H.264 version at all, yt-dlp falls back to another codec —
+  check with `ffprobe` and use the conversion steps below in that case.
+- To get SRT subtitles directly:
+  ```bash
+  yt-dlp -f "bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[ext=mp4]" \
+    --merge-output-format mp4 \
+    --write-subs --write-auto-subs --sub-langs ar \
+    --convert-subs srt \
+    -o "%(title)s.%(ext)s" "URL"
+  ```
+
+---
+
 ## 1. Check what is inside your file
 
 ```bash

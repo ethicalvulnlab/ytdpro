@@ -37,7 +37,7 @@ everything to a folder you choose. The browser is just the remote control.
 ### Downloading
 
 - **Single video**, **playlist**, or **whole channel** (Videos / Shorts / Streams / Everything)
-- Quality presets: **Best, 1080p, 720p, 480p, 360p**, or **audio-only MP3**
+- Quality presets: **Best, 1080p, 720p, 480p, 360p**, **audio-only MP3**, or **TV (H.264 + AAC, no conversion)**
 - **Date range** filters for channels
 - **Skip already-downloaded** items with a per-channel archive
 - **URL preview** — title, channel, duration, thumbnail before you commit

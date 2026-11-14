@@ -646,6 +646,7 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
                   <button class="qchip" data-quality="480p">480p</button>
                   <button class="qchip" data-quality="360p">360p</button>
                   <button class="qchip" data-quality="audio" data-i18n="q.audio">Audio</button>
+                  <button class="qchip" data-quality="tv" data-i18n="q.tv" data-i18n-title="q.tv.hint" title="H.264 + AAC — ready for USB/TV">TV</button>
                 </div>
               </div>
               <div class="field">
@@ -784,6 +785,7 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
                     <option value="1080p">1080p</option><option value="720p">720p</option>
                     <option value="480p">480p</option><option value="360p">360p</option>
                     <option value="audio" data-i18n="q.audio.mp3">Audio only (mp3)</option>
+                    <option value="tv" data-i18n="q.tv.option">TV — H.264 + AAC (no conversion)</option>
                   </select>
                 </div>
                 <div class="setting">
@@ -936,6 +938,7 @@ en: {
   'subs.label':'Subtitles','subs.all':'All languages','subs.custom':'Custom…','subs.codes':'Language codes',
   'subs.available':'Available: {langs}','subs.auto':'Auto captions: {langs}','subs.tip':'Writes .vtt files next to the video.',
   'q.best':'Best','q.audio':'Audio','q.audio.mp3':'Audio only (mp3)',
+  'q.tv':'TV','q.tv.hint':'H.264 + AAC — ready for USB/TV','q.tv.option':'TV — H.264 + AAC (no conversion)',
   'sec.videos':'Videos','sec.shorts':'Shorts','sec.streams':'Streams','sec.all':'Everything',
   'hint.start':'to start · drop a link anywhere',
   'stat.videos':'Videos banked','stat.success':'Success rate','stat.disk':'On disk','stat.activity':'Last 14 days',
@@ -1008,6 +1011,7 @@ fr: {
   'subs.label':'Sous-titres','subs.all':'Toutes les langues','subs.custom':'Personnalisé…','subs.codes':'Codes de langue',
   'subs.available':'Disponibles : {langs}','subs.auto':'Sous-titres auto : {langs}','subs.tip':'Crée des fichiers .vtt à côté de la vidéo.',
   'q.best':'Meilleure','q.audio':'Audio','q.audio.mp3':'Audio seul (mp3)',
+  'q.tv':'TV','q.tv.hint':'H.264 + AAC — prêt pour USB/TV','q.tv.option':'TV — H.264 + AAC (sans conversion)',
   'sec.videos':'Vidéos','sec.shorts':'Shorts','sec.streams':'Directs','sec.all':'Tout',
   'hint.start':'pour lancer · déposez un lien n\u2019importe où',
   'stat.videos':'Vidéos archivées','stat.success':'Taux de réussite','stat.disk':'Sur le disque','stat.activity':'14 derniers jours',
@@ -1080,6 +1084,7 @@ ar: {
   'subs.label':'الترجمات','subs.all':'كل اللغات','subs.custom':'مخصص…','subs.codes':'رموز اللغة',
   'subs.available':'المتاح: {langs}','subs.auto':'ترجمات تلقائية: {langs}','subs.tip':'ينشئ ملفات .vtt بجانب الفيديو.',
   'q.best':'الأفضل','q.audio':'صوت','q.audio.mp3':'صوت فقط (mp3)',
+  'q.tv':'تلفاز','q.tv.hint':'H.264 + AAC — جاهز لـ USB/TV','q.tv.option':'تلفاز — H.264 + AAC (بلا تحويل)',
   'sec.videos':'الفيديوهات','sec.shorts':'المقاطع','sec.streams':'البث','sec.all':'الكل',
   'hint.start':'للبدء · أفلت رابطًا في أي مكان',
   'stat.videos':'فيديوهات محفوظة','stat.success':'نسبة النجاح','stat.disk':'على القرص','stat.activity':'آخر 14 يومًا',
@@ -1148,6 +1153,7 @@ function applyLang(){
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
   const s = document.getElementById('s-lang'); if(s) s.value = lang;
   document.getElementById('view-title').textContent = t('view.' + curView);
   document.getElementById('view-kicker').textContent = t('view.' + curView + '.kicker');

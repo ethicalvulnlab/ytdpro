@@ -88,6 +88,10 @@ QUALITY_MAP = {
     "480p":  ("bestvideo[height<=480]+bestaudio/best[height<=480]",   "mp4"),
     "360p":  ("bestvideo[height<=360]+bestaudio/best[height<=360]",   "mp4"),
     "audio": ("bestaudio/best",                                       "mp3"),
+    # Directly compatible with most TVs / USB players: H.264 + AAC in MP4.
+    "tv":    ("bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]"
+              "/b[ext=mp4][vcodec^=avc1][height<=1080]"
+              "/bv*[vcodec^=avc1]+ba/b[ext=mp4]/best",                "mp4"),
 }
 
 MODE_LABELS = {"single": "Single video", "playlist": "Playlist",
@@ -642,6 +646,11 @@ def _video_outtmpl(template: str, index) -> str:
         return template
 
 
+def _is_subtitle_error(message: str) -> bool:
+    text = str(message or "").lower()
+    return "subtitle" in text and ("unable to download" in text or "429" in text)
+
+
 def _resolve_output(path, ext: str):
     if not path:
         return None
@@ -728,6 +737,46 @@ def download_one(job_id: str, video: dict, base_opts: dict, ext: str = "mp4") ->
 
     except Exception as e:
         err = _clean_error(e)
+
+        # YouTube sometimes rate-limits the subtitle endpoint (HTTP 429) but
+        # still serves the media. Do not throw away a good video for that.
+        if _is_subtitle_error(err) and (opts.get("writesubtitles") or opts.get("writeautomaticsub")):
+            with jobs_lock:
+                job = jobs.get(job_id)
+                if job is not None:
+                    job["log"].append("⚠ subtitles unavailable — retrying video without them")
+            retry_opts = {k: v for k, v in opts.items()
+                          if k not in ("writesubtitles", "writeautomaticsub",
+                                       "subtitleslangs", "subtitlesformat")}
+            try:
+                with yt_dlp.YoutubeDL(retry_opts) as ydl:
+                    ydl.download([video["url"]])
+                final = _resolve_output(video.get("filepath"), ext)
+                with jobs_lock:
+                    video["status"]  = "done"
+                    video["percent"] = 100
+                    video["error"]   = None
+                    video["subtitle_warning"] = err
+                    if final:
+                        video["filepath"] = str(final)
+                        try:
+                            video["filesize"] = final.stat().st_size
+                        except OSError:
+                            pass
+                    job = jobs.get(job_id)
+                    if job is not None:
+                        job["completed_videos"] += 1
+                        job["log"].append(f"✓ [{video['index']}] {video['title'][:70]} (subtitles skipped)")
+                _persist_video(job_id, video)
+                return True
+            except yt_dlp.utils.DownloadCancelled:
+                with jobs_lock:
+                    video["status"] = "skipped"
+                _persist_video(job_id, video)
+                return False
+            except Exception as e2:
+                err = _clean_error(e2)
+
         with jobs_lock:
             video["status"] = "error"
             video["error"]  = err

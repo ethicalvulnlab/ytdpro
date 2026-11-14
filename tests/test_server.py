@@ -292,3 +292,17 @@ def test_start_passes_subtitles(server, monkeypatch):
     assert r.status_code == 200 and captured["subtitles"] == "fr,en"
     r = c.post("/api/start", json={"url": "https://example.com/v", "subtitles": "en;rm"})
     assert r.status_code == 400
+
+
+def test_subtitle_error_detection(server):
+    assert server._is_subtitle_error("Unable to download video subtitles for 'ar': HTTP Error 429")
+    assert not server._is_subtitle_error("HTTP Error 403: Forbidden")
+    assert not server._is_subtitle_error("video unavailable")
+
+
+def test_tv_quality_preset(server):
+    assert "tv" in server.QUALITY_MAP
+    assert server.QUALITY_MAP["tv"][1] == "mp4"
+    opts, ext = server._base_opts(server.get_cfg(), "tv", Path("/tmp/x"), "single")
+    assert ext == "mp4"
+    assert "avc1" in opts["format"] and "mp4a" in opts["format"]

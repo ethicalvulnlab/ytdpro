@@ -116,6 +116,7 @@ a{color:inherit;text-decoration:none;}
 .dot.error{background:var(--accent);}
 .dot.ready{background:var(--amber);}
 .dot.cancelled{background:var(--ink-3);}
+.dot.interrupted{background:var(--amber);}
 @keyframes ping{0%{box-shadow:0 0 0 0 rgba(122,167,217,.5)}70%{box-shadow:0 0 0 6px rgba(122,167,217,0)}100%{box-shadow:0 0 0 0 rgba(122,167,217,0)}}
 .rail-foot{border-top:1px solid var(--line);padding-top:12px;margin-top:auto;display:flex;flex-direction:column;gap:8px;}
 .rail-meta{display:flex;align-items:center;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--ink-3);letter-spacing:.4px;padding:0 4px;}
@@ -294,6 +295,11 @@ a{color:inherit;text-decoration:none;}
 .vstate{position:absolute;top:6px;inset-inline-start:6px;font-family:var(--font-mono);font-size:8px;letter-spacing:.6px;text-transform:uppercase;padding:3px 6px;border-radius:4px;background:rgba(8,7,6,.72);color:#e9e0d2;backdrop-filter:blur(4px);}
 .vstate.downloading{background:rgba(58,110,170,.9);}
 .vstate.subtitles{background:rgba(122,167,217,.9);}
+.vcheck{display:none;position:absolute;top:5px;inset-inline-end:5px;z-index:4;width:22px;height:22px;border-radius:6px;background:rgba(8,7,6,.8);align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);}
+.vcheck input{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;}
+.vgrid.selecting .vcheck{display:flex;}
+.vgrid.selecting .vstate,.vgrid.selecting .vactions{display:none!important;}
+.ready-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .vstate.processing{background:rgba(170,120,30,.9);}
 .vstate.done{background:rgba(70,110,55,.9);}
 .vstate.error{background:rgba(190,50,32,.9);}
@@ -734,7 +740,10 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
               <h2 data-i18n="lib.title">Your library</h2>
               <p data-i18n="lib.sub">Every download is remembered. Relaunch it, retry what failed, or open the folder.</p>
             </div>
-            <button class="btn btn-ghost btn-sm" id="clear-btn" onclick="clearHistory()"><svg class="ic"><use href="#i-trash"/></svg><span data-i18n="act.clear">Clear</span></button>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost btn-sm" onclick="cleanCancelled()"><span data-i18n="act.cleancancel">Clean cancelled</span></button>
+              <button class="btn btn-ghost btn-sm" id="clear-btn" onclick="clearHistory()"><svg class="ic"><use href="#i-trash"/></svg><span data-i18n="act.clear">Clear</span></button>
+            </div>
           </div>
 
           <div class="toolbar">
@@ -747,6 +756,7 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
               <button class="filt" data-status="done" data-i18n="filt.done">Done</button>
               <button class="filt" data-status="error" data-i18n="filt.failed">Failed</button>
               <button class="filt" data-status="cancelled" data-i18n="filt.cancelled">Cancelled</button>
+              <button class="filt" data-status="interrupted" data-i18n="filt.interrupted">Interrupted</button>
             </div>
           </div>
 
@@ -812,6 +822,10 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px;}
                 <div class="setting">
                   <div class="s-txt"><div class="s-name" data-i18n="s_sb">SponsorBlock</div><div class="s-desc" data-i18n="sdesc_sb">Remove sponsor and self-promo segments automatically.</div></div>
                   <button class="switch" id="s-sb" role="switch" aria-checked="false" onclick="toggleSwitch(this)"></button>
+                </div>
+                <div class="setting">
+                  <div class="s-txt"><div class="s-name" data-i18n="s_retry">Auto-retry failed videos</div><div class="s-desc" data-i18n="sdesc_retry">How many times to retry a failed video before giving up.</div></div>
+                  <input class="inp" type="number" id="s-retry" min="0" max="3">
                 </div>
               </div>
             </div>
@@ -935,7 +949,7 @@ en: {
   'act.paste':'Paste','act.preview':'Preview','act.start':'Start download','act.open':'Open',
   'act.save':'Save preferences','act.reset':'Reset','act.clear':'Clear','act.retry':'Retry',
   'act.relaunch':'Relaunch','act.details':'Details','act.hide':'Hide','act.delete':'Delete',
-  'act.openfolder':'Open folder','act.retryfailed':'Retry failed','act.openfile':'Open file',
+  'act.openfolder':'Open folder','act.retryfailed':'Retry failed','act.openfile':'Open file','act.resume':'Resume','act.cleancancel':'Clean cancelled',
   'act.cancel':'Cancel','act.close':'Close','act.confirm':'Confirm','act.gotit':'Got it',
   'act.subtitles':'Get subtitles','subs.prompt.title':'Subtitle language','subs.prompt.body':'Enter one or more language codes, for example ar or en,fr.','subs.prompt.empty':'Enter a language code.',
   'lb.quality':'Quality','lb.section':'Section','lb.after':'Published after','lb.before':'Published before',
@@ -950,7 +964,7 @@ en: {
   'stat.success.sub':'across the library','stat.videos.sub':'{n} downloads','stat.disk.sub':'in the download folder',
   'lib.title':'Your library','lib.sub':'Every download is remembered. Relaunch it, retry what failed, or open the folder.',
   'search.placeholder':'Search title or URL…',
-  'filt.all':'All','filt.done':'Done','filt.failed':'Failed','filt.cancelled':'Cancelled',
+  'filt.all':'All','filt.done':'Done','filt.failed':'Failed','filt.cancelled':'Cancelled','filt.interrupted':'Interrupted',
   'hist.empty':'Nothing here yet','hist.empty.sub':'Your downloads will appear here with their titles, thumbnails and files — ready to relaunch at any time.',
   'hist.noresult':'Nothing matches','hist.noresult.sub':'Try another search or filter.',
   'hist.missing':'Untitled download',
@@ -968,6 +982,7 @@ en: {
   's_cookies':'Browser cookies','sdesc_cookies':'For private or age-restricted videos. Close the browser first.',
   's_subs':'Subtitles','sdesc_subs':'Download subtitle files with videos.',
   's_sb':'SponsorBlock','sdesc_sb':'Remove sponsor and self-promo segments automatically.',
+  's_retry':'Auto-retry failed videos','sdesc_retry':'How many times to retry a failed video before giving up.',
   's_retention':'Keep history for','sdesc_retention':'Older entries are pruned automatically.',
   's_lang':'Language','sdesc_lang':'Interface language, including right-to-left layouts.',
   's_theme':'Appearance','sdesc_theme':'Switch between the dark room and the paper archive.',
@@ -975,17 +990,17 @@ en: {
   'theme.dark':'Dark room','theme.light':'Paper archive',
   'badge.saved':'Saved',
   'st.scanning':'Scanning','st.queued':'Queued','st.ready':'Ready','st.running':'Downloading',
-  'st.done':'Done','st.error':'Error','st.cancelled':'Cancelled','st.processing':'Merging','st.subtitles':'Subtitles',
+  'st.done':'Done','st.error':'Error','st.cancelled':'Cancelled','st.interrupted':'Interrupted','st.processing':'Merging','st.subtitles':'Subtitles',
   'st.skipped':'Skipped','st.downloading':'Downloading',
   'job.title':'Download','job.videos':'{n} videos','job.slots':'{a}/{m} active',
   'job.scanning':'Scanning the link…','job.ready':'Found {n} videos','job.ready.one':'Found 1 video',
   'job.ready.sub':'Will download {m} at a time. Review, then confirm.',
-  'job.confirm':'Download {n} videos','job.confirm.one':'Download 1 video','job.log':'Log',
+  'job.confirm':'Download {n} videos','job.confirm.one':'Download 1 video','job.confirm.selected':'Download {n} selected','job.selected':'{n} of {total} selected','act.selectall':'All','act.selectnone':'None','toast.selectone':'Select at least one video.','job.log':'Log',
   'toast.paste':'Paste a URL first.','toast.preview':'Preview failed — check the URL.',
   'toast.server':'Could not reach the server.','toast.started':'Download started.',
   'toast.saved':'Preferences saved.','toast.reset':'Preferences reset.',
   'toast.retry':'Retrying…','toast.relaunch':'Relaunching into a new download.',
-  'toast.deleted':'Removed from the library.','toast.cleared':'Library cleared.',
+  'toast.deleted':'Removed from the library.','toast.cleared':'Library cleared.','toast.cleaned':'Cancelled attempts removed.','notify.done':'Download finished',
   'toast.nofailed':'This entry has no failed videos.','toast.cancel':'Cancellation requested.',
   'toast.copied':'Pasted from clipboard.','toast.copyfail':'Clipboard is not available.',
   'toast.opened':'Opened.','toast.openfail':'Could not open that location.','toast.subsstarted':'Fetching {langs} subtitles…',
@@ -995,7 +1010,7 @@ en: {
   'confirm.clear.ok':'Clear library',
   'confirm.delete.title':'Remove this entry?',
   'confirm.delete.body':'The download record will be deleted. The files on disk are not touched.',
-  'confirm.delete.ok':'Remove',
+  'confirm.delete.ok':'Remove','confirm.clean.title':'Clean cancelled attempts?','confirm.clean.body':'Cancelled jobs are removed from the library. Their files on disk stay untouched.','confirm.clean.ok':'Clean',
 },
 fr: {
   'nav.download':'Télécharger','nav.history':'Bibliothèque','nav.settings':'Réglages','nav.active':'En cours',
@@ -1009,7 +1024,7 @@ fr: {
   'act.paste':'Coller','act.preview':'Aperçu','act.start':'Lancer le téléchargement','act.open':'Ouvrir',
   'act.save':'Enregistrer','act.reset':'Réinitialiser','act.clear':'Vider','act.retry':'Réessayer',
   'act.relaunch':'Relancer','act.details':'Détails','act.hide':'Masquer','act.delete':'Supprimer',
-  'act.openfolder':'Dossier','act.retryfailed':'Réessayer les échecs','act.openfile':'Ouvrir le fichier',
+  'act.openfolder':'Dossier','act.retryfailed':'Réessayer les échecs','act.openfile':'Ouvrir le fichier','act.resume':'Reprendre','act.cleancancel':'Nettoyer les annulations',
   'act.cancel':'Annuler','act.close':'Fermer','act.confirm':'Confirmer','act.gotit':'Compris',
   'act.subtitles':'Obtenir les sous-titres','subs.prompt.title':'Langue des sous-titres','subs.prompt.body':'Entrez un ou plusieurs codes, par exemple ar ou en,fr.','subs.prompt.empty':'Entrez un code de langue.',
   'lb.quality':'Qualité','lb.section':'Section','lb.after':'Publié après','lb.before':'Publié avant',
@@ -1024,7 +1039,7 @@ fr: {
   'stat.success.sub':'sur toute la bibliothèque','stat.videos.sub':'{n} téléchargements','stat.disk.sub':'dans le dossier de téléchargement',
   'lib.title':'Votre bibliothèque','lib.sub':'Chaque téléchargement est mémorisé. Relancez-le, réessayez les échecs, ou ouvrez le dossier.',
   'search.placeholder':'Rechercher un titre ou une URL…',
-  'filt.all':'Tout','filt.done':'Terminés','filt.failed':'Échecs','filt.cancelled':'Annulés',
+  'filt.all':'Tout','filt.done':'Terminés','filt.failed':'Échecs','filt.cancelled':'Annulés','filt.interrupted':'Interrompus',
   'hist.empty':'Rien pour l\u2019instant','hist.empty.sub':'Vos téléchargements apparaîtront ici avec titres, vignettes et fichiers — prêts à être relancés.',
   'hist.noresult':'Aucun résultat','hist.noresult.sub':'Essayez une autre recherche ou un autre filtre.',
   'hist.missing':'Téléchargement sans titre',
@@ -1042,6 +1057,7 @@ fr: {
   's_cookies':'Cookies du navigateur','sdesc_cookies':'Pour les vidéos privées ou soumises à l\u2019âge. Fermez le navigateur avant.',
   's_subs':'Sous-titres','sdesc_subs':'Télécharger les sous-titres avec les vidéos.',
   's_sb':'SponsorBlock','sdesc_sb':'Supprimer automatiquement les segments sponsor et auto-promo.',
+  's_retry':'Réessayer les vidéos échouées','sdesc_retry':'Nombre de tentatives avant d’abandonner.',
   's_retention':'Conserver l\u2019historique','sdesc_retention':'Les entrées plus anciennes sont supprimées automatiquement.',
   's_lang':'Langue','sdesc_lang':'Langue de l\u2019interface, y compris les mises en page de droite à gauche.',
   's_theme':'Apparence','sdesc_theme':'Basculez entre la salle sombre et l\u2019archive papier.',
@@ -1049,17 +1065,17 @@ fr: {
   'theme.dark':'Salle sombre','theme.light':'Archive papier',
   'badge.saved':'Enregistré',
   'st.scanning':'Analyse','st.queued':'En attente','st.ready':'Prêt','st.running':'Téléchargement',
-  'st.done':'Terminé','st.error':'Erreur','st.cancelled':'Annulé','st.processing':'Fusion','st.subtitles':'Sous-titres',
+  'st.done':'Terminé','st.error':'Erreur','st.cancelled':'Annulé','st.interrupted':'Interrompu','st.processing':'Fusion','st.subtitles':'Sous-titres',
   'st.skipped':'Ignoré','st.downloading':'Téléchargement',
   'job.title':'Téléchargement','job.videos':'{n} vidéos','job.slots':'{a}/{m} actifs',
   'job.scanning':'Analyse du lien…','job.ready':'{n} vidéos trouvées','job.ready.one':'1 vidéo trouvée',
   'job.ready.sub':'Téléchargera {m} à la fois. Vérifiez puis confirmez.',
-  'job.confirm':'Télécharger {n} vidéos','job.confirm.one':'Télécharger 1 vidéo','job.log':'Journal',
+  'job.confirm':'Télécharger {n} vidéos','job.confirm.one':'Télécharger 1 vidéo','job.confirm.selected':'Télécharger {n} sélectionnée(s)','job.selected':'{n} sur {total} sélectionnée(s)','act.selectall':'Tout','act.selectnone':'Aucun','toast.selectone':'Sélectionnez au moins une vidéo.','job.log':'Journal',
   'toast.paste':'Collez d\u2019abord une URL.','toast.preview':'Aperçu impossible — vérifiez l\u2019URL.',
   'toast.server':'Serveur inaccessible.','toast.started':'Téléchargement lancé.',
   'toast.saved':'Préférences enregistrées.','toast.reset':'Préférences réinitialisées.',
   'toast.retry':'Nouvelle tentative…','toast.relaunch':'Relance dans un nouveau téléchargement.',
-  'toast.deleted':'Retiré de la bibliothèque.','toast.cleared':'Bibliothèque vidée.',
+  'toast.deleted':'Retiré de la bibliothèque.','toast.cleared':'Bibliothèque vidée.','toast.cleaned':'Tentatives annulées supprimées.','notify.done':'Téléchargement terminé',
   'toast.nofailed':'Cette entrée n\u2019a aucun échec.','toast.cancel':'Annulation demandée.',
   'toast.copied':'Collé depuis le presse-papiers.','toast.copyfail':'Presse-papiers indisponible.',
   'toast.opened':'Ouvert.','toast.openfail':'Impossible d\u2019ouvrir cet emplacement.','toast.subsstarted':'Récupération des sous-titres {langs}…',
@@ -1069,7 +1085,7 @@ fr: {
   'confirm.clear.ok':'Vider',
   'confirm.delete.title':'Retirer cette entrée ?',
   'confirm.delete.body':'L\u2019enregistrement sera supprimé. Les fichiers sur le disque ne sont pas touchés.',
-  'confirm.delete.ok':'Retirer',
+  'confirm.delete.ok':'Retirer','confirm.clean.title':'Nettoyer les tentatives annulées ?','confirm.clean.body':'Les tâches annulées sont retirées de la bibliothèque. Les fichiers restent sur le disque.','confirm.clean.ok':'Nettoyer',
 },
 ar: {
   'nav.download':'تنزيل','nav.history':'المكتبة','nav.settings':'الإعدادات','nav.active':'قيد التنفيذ',
@@ -1083,7 +1099,7 @@ ar: {
   'act.paste':'لصق','act.preview':'معاينة','act.start':'ابدأ التنزيل','act.open':'فتح',
   'act.save':'حفظ الإعدادات','act.reset':'استعادة','act.clear':'تفريغ','act.retry':'إعادة',
   'act.relaunch':'إعادة التشغيل','act.details':'التفاصيل','act.hide':'إخفاء','act.delete':'حذف',
-  'act.openfolder':'المجلد','act.retryfailed':'إعادة الفاشلة','act.openfile':'فتح الملف',
+  'act.openfolder':'المجلد','act.retryfailed':'إعادة الفاشلة','act.openfile':'فتح الملف','act.resume':'استئناف','act.cleancancel':'حذف الملغاة',
   'act.cancel':'إلغاء','act.close':'إغلاق','act.confirm':'تأكيد','act.gotit':'حسنًا',
   'act.subtitles':'تنزيل الترجمات','subs.prompt.title':'لغة الترجمة','subs.prompt.body':'أدخل رمزًا أو أكثر، مثل ar أو en,fr.','subs.prompt.empty':'أدخل رمز اللغة.',
   'lb.quality':'الجودة','lb.section':'القسم','lb.after':'نُشر بعد','lb.before':'نُشر قبل',
@@ -1098,7 +1114,7 @@ ar: {
   'stat.success.sub':'عبر المكتبة','stat.videos.sub':'{n} تنزيلًا','stat.disk.sub':'في مجلد التنزيل',
   'lib.title':'مكتبتك','lib.sub':'كل تنزيل محفوظ. أعد تشغيله، أعد محاولة الفاشل، أو افتح المجلد.',
   'search.placeholder':'ابحث بالعنوان أو الرابط…',
-  'filt.all':'الكل','filt.done':'مكتمل','filt.failed':'فاشل','filt.cancelled':'ملغى',
+  'filt.all':'الكل','filt.done':'مكتمل','filt.failed':'فاشل','filt.cancelled':'ملغى','filt.interrupted':'متوقف',
   'hist.empty':'لا شيء بعد','hist.empty.sub':'ستظهر تنزيلاتك هنا مع العناوين والصور والملفات — جاهزة لإعادة التشغيل.',
   'hist.noresult':'لا نتائج','hist.noresult.sub':'جرّب بحثًا أو تصفية أخرى.',
   'hist.missing':'تنزيل بلا عنوان',
@@ -1116,6 +1132,7 @@ ar: {
   's_cookies':'كوكيز المتصفح','sdesc_cookies':'للفيديوهات الخاصة أو المقيدة بالعمر. أغلق المتصفح أولًا.',
   's_subs':'الترجمات','sdesc_subs':'نزّل ملفات الترجمة مع الفيديوهات.',
   's_sb':'سبونسر بلوك','sdesc_sb':'إزالة مقاطع الإعلانات والترويج تلقائيًا.',
+  's_retry':'إعادة محاولة الفيديوهات الفاشلة','sdesc_retry':'عدد المحاولات قبل التخلي.',
   's_retention':'الاحتفاظ بالسجل','sdesc_retention':'تُحذف الإدخالات الأقدم تلقائيًا.',
   's_lang':'اللغة','sdesc_lang':'لغة الواجهة، بما في ذلك التخطيط من اليمين إلى اليسار.',
   's_theme':'المظهر','sdesc_theme':'بدّل بين الغرفة الداكنة وأرشيف الورق.',
@@ -1123,17 +1140,17 @@ ar: {
   'theme.dark':'غرفة داكنة','theme.light':'أرشيف ورقي',
   'badge.saved':'تم الحفظ',
   'st.scanning':'فحص','st.queued':'في الانتظار','st.ready':'جاهز','st.running':'جارٍ التنزيل',
-  'st.done':'تم','st.error':'خطأ','st.cancelled':'أُلغي','st.processing':'دمج','st.subtitles':'الترجمات',
+  'st.done':'تم','st.error':'خطأ','st.cancelled':'أُلغي','st.interrupted':'متوقف','st.processing':'دمج','st.subtitles':'الترجمات',
   'st.skipped':'تخطي','st.downloading':'جارٍ التنزيل',
   'job.title':'تنزيل','job.videos':'{n} فيديو','job.slots':'{a}/{m} نشط',
   'job.scanning':'جارٍ فحص الرابط…','job.ready':'تم العثور على {n} فيديو','job.ready.one':'تم العثور على فيديو واحد',
   'job.ready.sub':'سيُنزّل {m} في المرة. راجع ثم أكِّد.',
-  'job.confirm':'نزّل {n} فيديو','job.confirm.one':'نزّل فيديو واحدًا','job.log':'السجل',
+  'job.confirm':'نزّل {n} فيديو','job.confirm.one':'نزّل فيديو واحدًا','job.confirm.selected':'نزّل {n} محددًا','job.selected':'{n} من {total} محدد','act.selectall':'الكل','act.selectnone':'لا شيء','toast.selectone':'اختر فيديو واحدًا على الأقل.','job.log':'السجل',
   'toast.paste':'الصق رابطًا أولًا.','toast.preview':'فشلت المعاينة — تحقق من الرابط.',
   'toast.server':'تعذر الوصول إلى الخادم.','toast.started':'بدأ التنزيل.',
   'toast.saved':'تم حفظ التفضيلات.','toast.reset':'تمت استعادة التفضيلات.',
   'toast.retry':'جارٍ إعادة المحاولة…','toast.relaunch':'إعادة التشغيل في تنزيل جديد.',
-  'toast.deleted':'أُزيل من المكتبة.','toast.cleared':'تم تفريغ المكتبة.',
+  'toast.deleted':'أُزيل من المكتبة.','toast.cleared':'تم تفريغ المكتبة.','toast.cleaned':'تم حذف المحاولات الملغاة.','notify.done':'اكتمل التنزيل',
   'toast.nofailed':'لا توجد فيديوهات فاشلة.','toast.cancel':'تم طلب الإلغاء.',
   'toast.copied':'تم اللصق من الحافظة.','toast.copyfail':'الحافظة غير متاحة.',
   'toast.opened':'تم الفتح.','toast.openfail':'تعذر فتح هذا الموقع.','toast.subsstarted':'جارٍ تنزيل ترجمات {langs}…',
@@ -1143,7 +1160,7 @@ ar: {
   'confirm.clear.ok':'تفريغ',
   'confirm.delete.title':'إزالة هذا الإدخال؟',
   'confirm.delete.body':'سيُحذف سجل التنزيل. لن تُمس الملفات على القرص.',
-  'confirm.delete.ok':'إزالة',
+  'confirm.delete.ok':'إزالة','confirm.clean.title':'حذف المحاولات الملغاة؟','confirm.clean.body':'تُحذف المهام الملغاة من المكتبة. تبقى الملفات على القرص.','confirm.clean.ok':'حذف',
 }
 };
 let lang = localStorage.getItem('ytd-lang') || (navigator.language?.startsWith('fr') ? 'fr' : navigator.language?.startsWith('ar') ? 'ar' : 'en');
@@ -1211,6 +1228,28 @@ function fmtRelative(ts){
   if(diff < 86400000) return Math.floor(diff/3600000) + 'h';
   if(diff < 604800000) return Math.floor(diff/86400000) + 'd';
   return new Date(Number(ts)).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+function ensureNotifyPermission(){
+  try{
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission().catch(() => {});
+    }
+  }catch(e){}
+}
+function notifyDone(d){
+  try{
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    const n = new Notification(t('notify.done'), {
+      body: (d.title || t('job.title')) + ' · ' + (d.completed_videos || 0) + '/' + (d.total_videos || 0)
+    });
+    n.onclick = () => { window.focus(); showView('history'); n.close(); };
+  }catch(e){}
+}
+function updateTabTitle(){
+  const active = Array.from(jobState.values()).filter(s => !s.done);
+  if(!active.length){ document.title = 'ytdpro — local media vault'; return; }
+  const p = active[0].progress;
+  document.title = (p && p.total ? `(${p.completed}/${p.total}) ` : `(${active.length}) `) + 'ytdpro';
 }
 function toast(msg, isError){
   const el = $('#toast');
@@ -1339,6 +1378,7 @@ async function startDownload(){
   const url = $('#url-input').value.trim();
   if(!url){ toast(t('toast.paste'), true); $('#url-input').focus(); return; }
   const btn = $('#start-btn'); btn.disabled = true;
+  ensureNotifyPermission();
   try{
     const d = await api('/api/start', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -1378,7 +1418,7 @@ function createJobPanel(job){
   const id = job.id;
   if(jobState.has(id)) return;
   jobState.set(id, {es:null, timer:null, logOpen:false, confirmed:false, done:!!job.done,
-                    status:job.status || 'queued'});
+                    status:job.status || 'queued', selected:null, selectionReady:false, notified:false});
   const panel = document.createElement('div');
   panel.className = 'job';
   panel.id = 'jp-' + id;
@@ -1450,6 +1490,7 @@ function processJobState(id, d){
   const st = jobState.get(id);
   if(!st) return;
   st.status = d.status;
+  st.serverStatus = d.status;
   st.done = !!d.done;
 
   const badge = $('#jb-' + id);
@@ -1481,14 +1522,28 @@ function processJobState(id, d){
   if(d.status === 'ready' && !ready && !st.confirmed){
     ready = document.createElement('div');
     ready.className = 'ready-banner'; ready.id = 'jready-' + id;
-    ready.innerHTML = `<div class="ready-txt"><strong>${esc(t((d.total_videos||0) === 1 ? 'job.ready.one' : 'job.ready', {n:d.total_videos||0}))}</strong><span>${esc(t('job.ready.sub', {m:d.max_concurrent||3}))}</span></div>
-      <button class="btn btn-accent btn-sm" data-act="job-confirm"><svg class="ic"><use href="#i-play"/></svg>${esc(t('job.confirm', {n:d.total_videos||0}))}</button>`;
+    ready.innerHTML = `<div class="ready-txt"><strong>${esc(t((d.total_videos||0) === 1 ? 'job.ready.one' : 'job.ready', {n:d.total_videos||0}))}</strong><span>${esc(t('job.ready.sub', {m:d.max_concurrent||3}))}</span><span id="selcount-${id}" class="mono" style="display:block;margin-top:5px;color:var(--ink-3)"></span></div>
+      <div class="ready-tools">
+        <button class="btn btn-xs btn-quiet" data-act="select-all">${esc(t('act.selectall'))}</button>
+        <button class="btn btn-xs btn-quiet" data-act="select-none">${esc(t('act.selectnone'))}</button>
+        <button class="btn btn-accent btn-sm" id="confirm-btn-${id}" data-act="job-confirm"><svg class="ic"><use href="#i-play"/></svg>${esc(t((d.total_videos||0) === 1 ? 'job.confirm.one' : 'job.confirm', {n:d.total_videos||0}))}</button>
+      </div>`;
     $('#joverall-' + id).before(ready);
+  }
+  if(d.status === 'ready'){
+    if(!st.selectionReady){
+      st.selected = new Set((d.videos || []).map(v => String(v.id)));
+      st.selectionReady = true;
+    }
+    st.lastTotal = d.total_videos || (d.videos || []).length;
+    updateReadySelection(id);
   }
   if(d.status === 'running' && ready) ready.remove();
 
   const total = d.total_videos || 0, comp = d.completed_videos || 0, fail = d.failed_videos || 0;
   const pct = total ? Math.round(comp / total * 100) : 0;
+  st.progress = {completed: comp, total};
+  updateTabTitle();
   const ov = $('#joverall-' + id);
   if(ov) ov.style.display = total > 0 ? '' : 'none';
   const bar = $('#jbar-' + id); if(bar) bar.style.width = pct + '%';
@@ -1534,7 +1589,9 @@ const VIDEO_STATE_LABEL = {queued:'st.queued', downloading:'st.downloading', pro
 function renderVideos(jobId, videos){
   const grid = $('#jgrid-' + jobId);
   if(!grid) return;
+  const jst = jobState.get(jobId);
   grid.classList.toggle('solo', videos.length === 1);
+  grid.classList.toggle('selecting', !!jst && !jst.done && jst.serverStatus === 'ready');
   videos.forEach((v, idx) => {
     const cid = 'vc-' + jobId + '-' + idx;
     let card = document.getElementById(cid);
@@ -1547,6 +1604,7 @@ function renderVideos(jobId, videos){
           ${v.thumbnail ? `<img src="${esc(v.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">` : ''}
           <div class="ph" ${v.thumbnail ? 'style="display:none"' : ''}>${v.index || idx + 1}</div>
           <div class="shade"></div>
+          <label class="vcheck" title="${esc(t('act.selectall'))}"><input type="checkbox" class="vsel" data-video="${esc(v.id)}" checked></label>
           <span class="vstate" id="vst-${jobId}-${idx}">${esc(statusLabel(v.status))}</span>
           <span class="vspeed" id="vsp-${jobId}-${idx}"></span>
           <div class="vprog"><i id="vpf-${jobId}-${idx}"></i></div>
@@ -1564,6 +1622,8 @@ function renderVideos(jobId, videos){
     }
     const st = v.status || 'queued';
     card.className = 'vcard' + (st === 'downloading' ? ' dl' : st === 'done' ? ' done' : st === 'error' ? ' err' : '');
+    const cb = card.querySelector('.vsel');
+    if(cb && jst && jst.selected) cb.checked = jst.selected.has(String(v.id));
     const stEl = $('#vst-' + jobId + '-' + idx);
     if(stEl){ stEl.className = 'vstate ' + st; stEl.textContent = statusLabel(st); }
     const pf = $('#vpf-' + jobId + '-' + idx);
@@ -1607,10 +1667,21 @@ $('#jobs-area').addEventListener('click', async e => {
     $('#jlog-' + jobId).classList.toggle('open', st.logOpen);
     btn.classList.toggle('open', st.logOpen);
     if(st.logOpen){ const lb = $('#jlog-' + jobId); lb.scrollTop = lb.scrollHeight; }
+  } else if(act === 'select-all' || act === 'select-none'){
+    const st = jobState.get(jobId); const grid = $('#jgrid-'+jobId);
+    if(!st || !grid) return;
+    const boxes = [...grid.querySelectorAll('.vsel')];
+    st.selected = new Set(act === 'select-all' ? boxes.map(b => String(b.dataset.video)) : []);
+    boxes.forEach(b => { b.checked = act === 'select-all'; });
+    updateReadySelection(jobId);
   } else if(act === 'job-confirm'){
+    const st = jobState.get(jobId);
+    const ids = st && st.selected ? [...st.selected] : null;
+    if(ids && ids.length === 0){ toast(t('toast.selectone'), true); return; }
     try{
-      await api('/api/confirm/' + jobId, {method:'POST'});
-      const st = jobState.get(jobId); if(st) st.confirmed = true;
+      await api('/api/confirm/' + jobId, {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({videoIds: ids})});
+      if(st) st.confirmed = true;
       const ready = $('#jready-' + jobId); if(ready) ready.remove();
       connectJob(jobId);
     }catch(err){ toast(err.message, true); }
@@ -1627,6 +1698,30 @@ $('#jobs-area').addEventListener('click', async e => {
     try{ await api('/api/cancel_video/' + jobId + '/' + encodeURIComponent(btn.dataset.video), {method:'POST'}); }catch(err){}
   }
 });
+
+$('#jobs-area').addEventListener('change', e => {
+  if(!e.target.classList.contains('vsel')) return;
+  const panel = e.target.closest('.job'); if(!panel) return;
+  const jobId = panel.dataset.job;
+  const st = jobState.get(jobId); if(!st) return;
+  if(!st.selected) st.selected = new Set();
+  const id = String(e.target.dataset.video);
+  if(e.target.checked) st.selected.add(id); else st.selected.delete(id);
+  updateReadySelection(jobId);
+});
+
+function updateReadySelection(jobId){
+  const st = jobState.get(jobId); if(!st) return;
+  const n = st.selected ? st.selected.size : 0;
+  const total = st.lastTotal || 0;
+  const btn = document.getElementById('confirm-btn-'+jobId);
+  if(btn){
+    btn.disabled = n === 0;
+    btn.innerHTML = '<svg class="ic"><use href="#i-play"/></svg>' + esc(t('job.confirm.selected', {n}));
+  }
+  const cnt = document.getElementById('selcount-'+jobId);
+  if(cnt) cnt.textContent = t('job.selected', {n, total});
+}
 
 function closeJobPanel(jobId){
   const st = jobState.get(jobId);
@@ -1717,7 +1812,7 @@ function renderHistory(){
       ? `<img src="${esc(j.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="ph" style="display:none"><svg class="ic"><use href="#i-film"/></svg></div>`
       : `<div class="ph"><svg class="ic"><use href="#i-film"/></svg></div>`;
     const actions = `
-      ${j.url ? `<button class="btn btn-ghost" data-act="relaunch" title="${esc(t('act.relaunch'))}"><svg class="ic"><use href="#i-retry"/></svg><span>${esc(t('act.relaunch'))}</span></button>` : ''}
+      ${j.url ? `<button class="btn ${j.status === 'interrupted' ? 'btn-accent' : 'btn-ghost'}" data-act="relaunch" title="${esc(j.status === 'interrupted' ? t('act.resume') : t('act.relaunch'))}"><svg class="ic"><use href="#i-retry"/></svg><span>${esc(j.status === 'interrupted' ? t('act.resume') : t('act.relaunch'))}</span></button>` : ''}
       ${(j.failed_videos && j.preview.length) ? `<button class="btn btn-quiet" data-act="retryfailed"><svg class="ic"><use href="#i-alert"/></svg><span>${esc(t('act.retryfailed'))}</span></button>` : ''}
       ${(j.completed_videos && !['running','scanning','ready'].includes(j.status)) ? `<button class="btn btn-quiet" data-act="subtitles" title="${esc(t('act.subtitles'))}"><span style="font-size:9px;font-weight:700;letter-spacing:.5px">CC</span></button>` : ''}
       ${j.out_dir ? `<button class="btn btn-quiet" data-act="openfolder" title="${esc(t('act.openfolder'))}"><svg class="ic"><use href="#i-folder"/></svg></button>` : ''}
@@ -1770,6 +1865,7 @@ $('#hist-list').addEventListener('click', async e => {
     if(langs === null) return;
     langs = langs.trim();
     if(!langs){ toast(t('subs.prompt.empty'), true); return; }
+    ensureNotifyPermission();
     try{
       const d = await api('/api/history/' + encodeURIComponent(jobId) + '/subtitles',
         {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({langs})});
@@ -1832,6 +1928,17 @@ $('#hist-filters').addEventListener('click', e => {
   $$('#hist-filters .filt').forEach(x => x.classList.toggle('active', x === b));
   loadHistory();
 });
+
+async function cleanCancelled(){
+  const ok = await confirmDialog(t('confirm.clean.title'), t('confirm.clean.body'), t('confirm.clean.ok'));
+  if(!ok) return;
+  try{
+    await api('/api/history?status=cancelled', {method:'DELETE'});
+    await loadHistory();
+    loadStats(); loadRecent();
+    toast(t('toast.cleaned'));
+  }catch(err){ toast(err.message, true); }
+}
 
 async function clearHistory(){
   const ok = await confirmDialog(t('confirm.clear.title'), t('confirm.clear.body'), t('confirm.clear.ok'));
@@ -1920,6 +2027,7 @@ function applySettingsToUI(s){
   sb.setAttribute('aria-checked', s.sponsorblock ? 'true' : 'false');
   $('#s-sleep').value = s.sleep_interval ?? 1;
   $('#s-maxsleep').value = s.max_sleep_interval ?? 3;
+  $('#s-retry').value = s.auto_retry ?? 1;
   const ret = Number(s.history_retention_days ?? 90);
   $('#s-retention').value = ret === 0 ? '0' : (ret >= 365 ? '365' : '90');
   if(![...$('#s-retention').options].some(o => o.value === String(ret))) $('#s-retention').value = '90';
@@ -1944,6 +2052,7 @@ async function saveSettings(){
     sponsorblock: $('#s-sb').classList.contains('on'),
     sleep_interval: +$('#s-sleep').value,
     max_sleep_interval: +$('#s-maxsleep').value,
+    auto_retry: +$('#s-retry').value,
     history_retention_days: +$('#s-retention').value,
   };
   try{

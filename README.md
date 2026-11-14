@@ -54,10 +54,15 @@ everything to a folder you choose. The browser is just the remote control.
 - Persistent **SQLite history** — survives restarts and browser refreshes
 - Rich cards: thumbnail, title, source URL, mode, quality, duration, total size
 - **Search** by title or URL, filter by **Done / Failed / Cancelled**
-- **Relaunch** any past download with its original mode, quality and dates (a new attempt gets its own entry)
-- **Retry failed** items from a finished job — results are merged back into the same library entry, so no duplicate cards
+- **Resume interrupted jobs** after a restart; old attempts are grouped/hidden, not duplicated
+- **Relaunch** any past download with its original mode, quality and dates (the replaced attempt is hidden)
+- **Retry failed** items from a finished job — results are merged back into the same library entry
+- **Select which playlist items** to download before confirming
+- **Auto-retry** failed videos (configurable 0–3 attempts)
 - **Get subtitles later** for already-downloaded videos — no media re-download
 - **Open folder** / **open file** straight from the library
+- **Notifications** when a job finishes, plus live progress in the browser tab
+- **Clean cancelled** attempts and filter by Interrupted/Failed/Cancelled
 - **Stats**: videos banked, success rate, disk usage, 14-day activity
 - Configurable retention (30 days, 90 days, 1 year, or forever)
 - Per-item detail view with every file and its status

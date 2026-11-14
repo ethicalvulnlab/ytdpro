@@ -193,6 +193,8 @@ def test_relaunch_reuses_stored_settings(server, monkeypatch):
     assert r.status_code == 200 and r.get_json()["jobId"] == "new-job"
     assert calls == {"url": "https://example.com/v", "mode": "single",
                      "quality": "1080p", "section": "videos", "subtitles": "en"}
+    assert server._history_job("j-hist")["status"] == "superseded"
+    assert client(server).get("/api/history").get_json()["total"] == 0
 
 
 def test_retry_failed_creates_job(server, monkeypatch, tmp_path):
@@ -351,3 +353,43 @@ def test_run_subtitle_job_marks_done(server, monkeypatch, tmp_path):
     assert server.jobs[jid]["done"] is True
     assert server.jobs[jid]["status"] == "done"
     assert server.jobs[jid]["videos"][0]["status"] == "done"
+
+
+def test_confirm_with_selected_videos(server, monkeypatch):
+    jid = "pick"
+    server.jobs[jid] = {
+        "id": jid, "ts": int(time.time() * 1000), "status": "ready", "log": [],
+        "done": False, "error": None, "mode": "playlist", "origin_job_id": None,
+        "total_videos": 3, "completed_videos": 0, "failed_videos": 0,
+        "active_slots": 0, "max_concurrent": 2, "base_opts": {}, "title": "Pick",
+        "url": "https://example.com", "quality": "best", "section": "videos",
+        "date_after": "", "date_before": "", "out_dir": "/tmp",
+        "videos": [
+            {"id": "a", "index": 1, "title": "A", "url": "u", "status": "queued"},
+            {"id": "b", "index": 2, "title": "B", "url": "u", "status": "queued"},
+            {"id": "c", "index": 3, "title": "C", "url": "u", "status": "queued"},
+        ],
+    }
+    c = client(server)
+    r = c.post("/api/confirm/pick", json={"videoIds": ["a", "c"]})
+    assert r.status_code == 200
+    job = server.jobs[jid]
+    assert job["status"] == "running" and job["total_videos"] == 2
+    assert [v["status"] for v in job["videos"]] == ["queued", "skipped", "queued"]
+    assert job["selected_videos"] == ["a", "c"]
+    assert c.post("/api/confirm/pick", json={"videoIds": []}).status_code == 400
+
+
+def test_skipped_video_is_not_downloaded(server):
+    called = []
+    v = {"id": "x", "status": "skipped", "title": "X", "index": 1, "url": "u"}
+    server.jobs["skipjob"] = {"videos": [v], "log": []}
+    assert server.download_one("skipjob", v, {}) is False
+
+
+def test_recover_interrupted_jobs(server):
+    _seed(server, "was-running", status="running")
+    server._recover_interrupted_jobs()
+    row = server._history_job("was-running")
+    assert row["status"] == "interrupted"
+    assert "resume" in (row["error"] or "").lower()

@@ -53,6 +53,7 @@ DEFAULT_SETTINGS = {
     "cookies_browser":    "",
     "subtitles_lang":     "",
     "sponsorblock":       False,
+    "auto_retry":         1,
     "history_retention_days": 90,
 }
 
@@ -403,6 +404,8 @@ def _history_query(q: str = "", status: str = "", mode: str = "",
     if status and status != "all":
         where.append("status = ?")
         params.append(status)
+    else:
+        where.append("status <> 'superseded'")
     if mode and mode != "all":
         where.append("mode = ?")
         params.append(mode)
@@ -675,6 +678,8 @@ def _resolve_output(path, ext: str):
 
 
 def download_one(job_id: str, video: dict, base_opts: dict, ext: str = "mp4") -> bool:
+    if video.get("status") == "skipped":
+        return False
     if cancel_flags.get(job_id):
         with jobs_lock:
             video["status"] = "skipped"
@@ -792,8 +797,27 @@ def download_one(job_id: str, video: dict, base_opts: dict, ext: str = "mp4") ->
 
 
 def run_pool(job_id: str, videos: list, base_opts: dict, ext: str = "mp4"):
+    videos = [v for v in videos if v.get("status") != "skipped"]
+    if not videos:
+        return
+
     def worker(vid):
-        download_one(job_id, vid, base_opts, ext)
+        ok = download_one(job_id, vid, base_opts, ext)
+        retries = max(0, int(get_cfg().get("auto_retry", 1) or 0))
+        n = 0
+        while (not ok and n < retries and vid.get("status") == "error"
+               and not cancel_flags.get(job_id)):
+            n += 1
+            with jobs_lock:
+                job = jobs.get(job_id)
+                if job is not None:
+                    job["failed_videos"] = max(0, job.get("failed_videos", 1) - 1)
+                    job["log"].append(f"↻ retry {n}/{retries} [{vid.get('index')}] {vid.get('title', '')[:50]}")
+                vid["retry_count"] = vid.get("retry_count", 0) + 1
+                vid["status"] = "queued"
+                vid["error"] = None
+            time.sleep(4)
+            ok = download_one(job_id, vid, base_opts, ext)
 
     workers = max(1, min(12, len(videos)))
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -1156,15 +1180,28 @@ def start_download():
 
 @app.route("/api/confirm/<job_id>", methods=["POST"])
 def confirm_download(job_id):
+    data = request.json or {}
     with jobs_lock:
         job = jobs.get(job_id)
         if not job:
             return jsonify({"error": "Job not found"}), 404
         if job["status"] != "ready":
             return jsonify({"error": "Not in ready state"}), 400
+        ids = data.get("videoIds")
+        if ids is not None:
+            selected = {str(x) for x in ids}
+            if not selected:
+                return jsonify({"error": "Select at least one video"}), 400
+            for v in job.get("videos", []):
+                if v.get("status") == "queued" and str(v.get("id")) not in selected:
+                    v["status"] = "skipped"
+            job["selected_videos"] = sorted(selected)
+            job["total_videos"] = sum(1 for v in job.get("videos", [])
+                                       if str(v.get("id")) in selected)
+            job["log"].append(f"Downloading {job['total_videos']} selected video(s).")
         job["status"] = "running"
         job["log"].append("Confirmed.")
-    _persist_job(job_id)
+    _persist_job(job_id, include_videos=True)
     return jsonify({"success": True})
 
 
@@ -1405,6 +1442,21 @@ def _merge_retry_results(origin_id: str, retry_id: str, videos: list):
         log.debug("retry merge failed: %s", exc)
 
 
+def _recover_interrupted_jobs():
+    """A running job that is not in memory anymore was stopped by a restart."""
+    try:
+        _init_db()
+        with _db() as db:
+            cur = db.execute(
+                "UPDATE jobs SET status='interrupted', error=? "
+                "WHERE status IN ('queued','scanning','ready','running')",
+                ("App stopped before completion — resume to continue",))
+            if cur.rowcount:
+                log.info("Marked %s interrupted job(s)", cur.rowcount)
+    except Exception as exc:
+        log.warning("Interrupted-job recovery failed: %s", exc)
+
+
 def _merge_legacy_retries():
     """One-time cleanup for retry entries created by older versions."""
     try:
@@ -1527,6 +1579,15 @@ def run_subtitle_job(job_id: str, langs: str):
         for attempt in range(3):
             try:
                 files = _download_subtitles_for_video(video, langs, cfg)
+                # Also create the TV-friendly <video>.srt when possible.
+                try:
+                    base = Path(video["filepath"]).with_suffix("")
+                    default_srt = base.with_suffix(".srt")
+                    if files and not default_srt.exists():
+                        shutil.copyfile(files[0], default_srt)
+                        files.append(default_srt)
+                except Exception:
+                    pass
                 with jobs_lock:
                     video["status"] = "done"
                     video["percent"] = 100
@@ -1663,6 +1724,12 @@ def history_relaunch(job_id):
     row = _history_job(job_id)
     if not row:
         return jsonify({"error": "Not found"}), 404
+    with jobs_lock:
+        live = jobs.get(job_id)
+    if live and not live.get("done"):
+        return jsonify({"error": "This job is still running"}), 409
+    if row.get("status") in ("running", "scanning", "ready"):
+        return jsonify({"error": "This job is still marked as running"}), 409
     url = normalize_url(row.get("url") or "")
     if not url:
         return jsonify({"error": "This entry has no stored URL"}), 400
@@ -1674,6 +1741,12 @@ def history_relaunch(job_id):
     new_id = _spawn_job(url, mode, quality, row.get("section") or "videos",
                         row.get("date_after") or "", row.get("date_before") or "",
                         row.get("subtitles") or "")
+    try:
+        with _db() as db:
+            db.execute("UPDATE jobs SET status='superseded', error=? WHERE job_id=?",
+                       ("Replaced by a newer attempt", job_id))
+    except Exception as exc:
+        log.debug("could not supersede old job: %s", exc)
     return jsonify({"jobId": new_id})
 
 
@@ -1787,11 +1860,14 @@ def stats():
     _purge_old_jobs_db()
     _init_db()
     with _db() as db:
-        total_jobs = db.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
-        video_rows = db.execute("SELECT status, COUNT(*) c, SUM(COALESCE(filesize,0)) s "
-                                "FROM videos GROUP BY status").fetchall()
-        mode_rows = db.execute("SELECT mode, COUNT(*) c FROM jobs GROUP BY mode").fetchall()
-        recent = db.execute("SELECT ts, completed, failed, total FROM jobs WHERE ts > ?",
+        total_jobs = db.execute("SELECT COUNT(*) FROM jobs WHERE status <> 'superseded'").fetchone()[0]
+        video_rows = db.execute("SELECT v.status, COUNT(*) c, SUM(COALESCE(v.filesize,0)) s "
+                                "FROM videos v JOIN jobs j ON j.job_id=v.job_id "
+                                "WHERE j.status <> 'superseded' GROUP BY v.status").fetchall()
+        mode_rows = db.execute("SELECT mode, COUNT(*) c FROM jobs "
+                               "WHERE status <> 'superseded' GROUP BY mode").fetchall()
+        recent = db.execute("SELECT ts, completed, failed, total FROM jobs "
+                            "WHERE ts > ? AND status <> 'superseded'",
                             (int((time.time() - 14 * 86400) * 1000),)).fetchall()
     by_status, total_videos, total_bytes = {}, 0, 0
     for status, c, s in video_rows:
@@ -1896,6 +1972,7 @@ def open_path():
 if __name__ == "__main__":
     Path(settings["download_dir"]).expanduser().mkdir(parents=True, exist_ok=True)
     _merge_legacy_retries()
+    _recover_interrupted_jobs()
     port = int(os.environ.get("YT_PORT", "8080"))
     host = os.environ.get("YT_HOST", "127.0.0.1")
     print(f"\n  ytdpro is running!")

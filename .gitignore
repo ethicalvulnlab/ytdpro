@@ -24,5 +24,7 @@ Thumbs.db
 .vscode/
 *.swp
 
-# TV conversion output
+# TV conversion helpers (local only)
 /TV/
+/TV-CONVERSION.md
+/convert-for-tv.sh

@@ -181,22 +181,6 @@ retry failures, open the folder, or delete the record.
 
 Change the folder in **Settings → Storage**, or with `YT_DOWNLOAD_DIR`.
 
-## Put videos on a TV / USB drive
-
-TV receivers usually fail on YouTube's VP9/AV1/Opus codecs, not on the MP4
-container. Convert them to **H.264 + AAC** and turn `.vtt` subtitles into `.srt`.
-
-```bash
-# convert a whole playlist folder into ./TV/
-./convert-for-tv.sh ~/Downloads/ytdpro/Playlists/"English Stories"
-
-# 720p + Arabic default subtitle
-./convert-for-tv.sh ~/Videos -o TV --max-height 720 --default-lang ar
-```
-
-Full guide, manual ffmpeg commands, USB/FAT32 rules and troubleshooting:
-**[TV-CONVERSION.md](TV-CONVERSION.md)**.
-
 ## Configuration
 
 Environment variables:

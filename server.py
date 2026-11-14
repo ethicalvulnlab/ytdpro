@@ -555,6 +555,25 @@ def make_video_hook(job_id: str, video_id: str):
     return hook
 
 
+def make_postproc_hook(job_id: str, video_id: str):
+    """After merge/post-processing, remember the real final file."""
+    def hook(d):
+        if d.get("status") != "finished":
+            return
+        info = d.get("info_dict") or {}
+        path = info.get("filepath")
+        if not path:
+            return
+        with jobs_lock:
+            job = jobs.get(job_id)
+            if not job:
+                return
+            vid = next((v for v in job["videos"] if v["id"] == video_id), None)
+            if vid:
+                vid["filepath"] = path
+    return hook
+
+
 # ── Scanning ──────────────────────────────────────────────────────────────────
 def scan_videos(job_id: str, url: str, extra_opts: dict = None) -> list:
     opts = {"quiet": True, "extract_flat": True,
@@ -627,12 +646,14 @@ def _resolve_output(path, ext: str):
     if not path:
         return None
     p = Path(path)
-    if p.exists() and p.is_file():
-        return p
+    # Prefer the merged/post-processed artefact (e.g. Title.mp4) over a
+    # leftover component file (e.g. Title.f251.webm).
     for candidate in [p.with_suffix("." + ext), p.with_suffix(".mp4"), p.with_suffix(".mkv"),
                       p.with_suffix(".webm"), p.with_suffix(".mp3"), p.with_suffix(".m4a")]:
-        if candidate.exists():
+        if candidate.exists() and candidate.is_file():
             return candidate
+    if p.exists() and p.is_file():
+        return p
     try:
         for candidate in p.parent.glob(p.stem + ".*"):
             if candidate.suffix.lower() in (".part", ".ytdl", ".temp", ".json"):
@@ -662,7 +683,8 @@ def download_one(job_id: str, video: dict, base_opts: dict, ext: str = "mp4") ->
         return False
 
     opts = {**base_opts, "noplaylist": True,
-            "progress_hooks": [make_video_hook(job_id, vid_id)]}
+            "progress_hooks": [make_video_hook(job_id, vid_id)],
+            "postprocessor_hooks": [make_postproc_hook(job_id, vid_id)]}
     if "%(playlist_index)" in str(opts.get("outtmpl", "")):
         opts["outtmpl"] = _video_outtmpl(opts["outtmpl"], video.get("index"))
 

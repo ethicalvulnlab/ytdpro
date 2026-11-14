@@ -372,6 +372,8 @@ a{color:inherit;text-decoration:none;}
 .hist-meta{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px;font-family:var(--font-mono);font-size:9.5px;color:var(--ink-3);letter-spacing:.2px;}
 .hist-meta span{display:inline-flex;align-items:center;gap:4px;}
 .hist-meta .ic{width:11px;height:11px;}
+.cc-tag{font-family:var(--font-mono);font-size:9.5px;color:var(--blue);background:var(--blue-soft);border:1px solid transparent;border-radius:4px;padding:1px 5px;cursor:pointer;letter-spacing:.2px;}
+.cc-tag:hover{border-color:var(--blue);color:var(--ink);}
 .hist-url{margin-top:6px;font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:520px;}
 .hist-counts{display:flex;gap:9px;margin-top:6px;font-family:var(--font-mono);font-size:9px;}
 .hist-counts .ok{color:var(--green);}
@@ -1803,7 +1805,7 @@ function renderHistory(){
     const bits = [];
     bits.push(`<span><svg class="ic"><use href="#i-film"/></svg>${esc(modeLabel)}</span>`);
     if(j.quality) bits.push(`<span>${esc(j.quality)}</span>`);
-    if(j.subtitles) bits.push(`<span>CC ${esc(j.subtitles)}</span>`);
+    if(j.subtitles) bits.push(`<button type="button" class="cc-tag" data-act="subtitles" title="${esc(t('act.subtitles'))}">CC ${esc(j.subtitles)}</button>`);
     if(j.total_videos) bits.push(`<span>${esc(j.total_videos === 1 ? t('hist.video.one') : t('hist.videos', {n:j.total_videos}))}</span>`);
     if(j.size_bytes) bits.push(`<span>${esc(fmtBytes(j.size_bytes))}</span>`);
     if(j.duration) bits.push(`<span>${esc(fmtDur(j.duration))}</span>`);
@@ -1814,7 +1816,7 @@ function renderHistory(){
     const actions = `
       ${j.url ? `<button class="btn ${j.status === 'interrupted' ? 'btn-accent' : 'btn-ghost'}" data-act="relaunch" title="${esc(j.status === 'interrupted' ? t('act.resume') : t('act.relaunch'))}"><svg class="ic"><use href="#i-retry"/></svg><span>${esc(j.status === 'interrupted' ? t('act.resume') : t('act.relaunch'))}</span></button>` : ''}
       ${(j.failed_videos && j.preview.length) ? `<button class="btn btn-quiet" data-act="retryfailed"><svg class="ic"><use href="#i-alert"/></svg><span>${esc(t('act.retryfailed'))}</span></button>` : ''}
-      ${(j.completed_videos && !['running','scanning','ready'].includes(j.status)) ? `<button class="btn btn-quiet" data-act="subtitles" title="${esc(t('act.subtitles'))}"><span style="font-size:9px;font-weight:700;letter-spacing:.5px">CC</span></button>` : ''}
+      ${(j.completed_videos && !['running','scanning','ready'].includes(j.status)) ? `<button class="btn btn-ghost" data-act="subtitles" title="${esc(t('act.subtitles'))}"><span style="font-size:9px;font-weight:700;letter-spacing:.5px">CC</span><span>${esc(t('act.subtitles'))}</span></button>` : ''}
       ${j.out_dir ? `<button class="btn btn-quiet" data-act="openfolder" title="${esc(t('act.openfolder'))}"><svg class="ic"><use href="#i-folder"/></svg></button>` : ''}
       <button class="btn btn-quiet" data-act="details" title="${esc(t('act.details'))}"><svg class="ic"><use href="#i-chevron"/></svg></button>
       <button class="btn btn-quiet" data-act="delete" title="${esc(t('act.delete'))}"><svg class="ic"><use href="#i-trash"/></svg></button>`;
